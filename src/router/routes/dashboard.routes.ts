@@ -14,7 +14,7 @@ const dashboardRoutes: RouteRecordRaw[] = [
   {
     path: '/customers/active',
     name: 'customers-active',
-    component: () => import('@/pages/PagePlaceholder.vue'),
+    component: () => import('@/pages/ActiveCustomersPage.vue'),
     meta: { layout: 'dashboard', requiresAuth: true, title: 'Active Customers' }
   },
   {
@@ -26,7 +26,7 @@ const dashboardRoutes: RouteRecordRaw[] = [
   {
     path: '/crm/interactions',
     name: 'crm-interactions',
-    component: () => import('@/pages/PagePlaceholder.vue'),
+    component: () => import('@/pages/InteractionsPage.vue'),
     meta: { layout: 'dashboard', requiresAuth: true, title: 'Interactions' }
   },
   {
