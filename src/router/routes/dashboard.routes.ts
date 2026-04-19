@@ -20,7 +20,7 @@ const dashboardRoutes: RouteRecordRaw[] = [
   {
     path: '/customers/leads',
     name: 'customers-leads',
-    component: () => import('@/pages/PagePlaceholder.vue'),
+    component: () => import('@/pages/LeadsPage.vue'),
     meta: { layout: 'dashboard', requiresAuth: true, title: 'Leads' }
   },
   {
