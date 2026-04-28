@@ -32,37 +32,37 @@ const dashboardRoutes: RouteRecordRaw[] = [
   {
     path: '/loans/all',
     name: 'loans-all',
-    component: () => import('@/pages/PagePlaceholder.vue'),
+    component: () => import('@/modules/loans/views/AllLoans.vue'),
     meta: { layout: 'dashboard', requiresAuth: true, title: 'All Loans' }
   },
   {
     path: '/loans/defaulters',
     name: 'loans-defaulters',
-    component: () => import('@/pages/PagePlaceholder.vue'),
+    component: () => import('@/modules/loans/views/Defaulters.vue'),
     meta: { layout: 'dashboard', requiresAuth: true, title: 'Defaulters' }
   },
   {
     path: '/loans/installments',
     name: 'loans-installments',
-    component: () => import('@/pages/PagePlaceholder.vue'),
+    component: () => import('@/modules/loans/views/Installments.vue'),
     meta: { layout: 'dashboard', requiresAuth: true, title: 'Installments' }
   },
   {
     path: '/loans/failing-due',
     name: 'loans-failing-due',
-    component: () => import('@/pages/PagePlaceholder.vue'),
+    component: () => import('@/modules/loans/views/FailingDue.vue'),
     meta: { layout: 'dashboard', requiresAuth: true, title: 'Failing Due' }
   },
   {
     path: '/loans/approvals',
     name: 'loans-approvals',
-    component: () => import('@/pages/PagePlaceholder.vue'),
+    component: () => import('@/modules/loans/views/Approvals.vue'),
     meta: { layout: 'dashboard', requiresAuth: true, title: 'Approvals' }
   },
   {
     path: '/payments',
     name: 'payments',
-    component: () => import('@/pages/PagePlaceholder.vue'),
+    component: () => import('@/pages/PaymentsPage.vue'),
     meta: { layout: 'dashboard', requiresAuth: true, title: 'Payments' }
   },
   {
