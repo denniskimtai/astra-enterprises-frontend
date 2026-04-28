@@ -315,7 +315,12 @@ const onSearch = (): void => {
               </td>
               <td class="px-4 py-3 text-sm text-[#374151]">
                 <div class="flex flex-col items-center">
-                  <Eye class="w-4 h-4 cursor-pointer text-[#4F1964] hover:text-[#380F47]" />
+                  <button
+                    class="cursor-pointer text-[#4F1964] hover:text-[#380F47]"
+                    @click="router.push(`/customers/${lead.id}`)"
+                  >
+                    <Eye class="w-4 h-4" />
+                  </button>
                   <MessageCircle class="mt-1 w-4 h-4 cursor-pointer text-[#F0C84A] hover:text-[#F9DA82]" />
                 </div>
               </td>

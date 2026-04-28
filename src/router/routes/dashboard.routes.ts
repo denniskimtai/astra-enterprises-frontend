@@ -24,6 +24,12 @@ const dashboardRoutes: RouteRecordRaw[] = [
     meta: { layout: 'dashboard', requiresAuth: true, title: 'Leads' }
   },
   {
+    path: '/customers/:id',
+    name: 'customer-detail',
+    component: () => import('@/modules/customers/views/CustomerDetail.vue'),
+    meta: { layout: 'dashboard', requiresAuth: true, title: 'Customer Details' }
+  },
+  {
     path: '/crm/interactions',
     name: 'crm-interactions',
     component: () => import('@/pages/InteractionsPage.vue'),
