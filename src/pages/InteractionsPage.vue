@@ -16,6 +16,7 @@ import {
   ChevronDown,
   Search
 } from 'lucide-vue-next'
+import InteractionDetailModal from '@/modules/crm/components/InteractionDetailModal.vue'
 
 interface Interaction {
   id: number
@@ -40,6 +41,8 @@ const activeTab = ref<'all' | 'my' | 'ptps'>('all')
 const searchQuery = ref('')
 const interactionDate = ref('')
 const nextDateToggle = ref(false)
+const selectedInteraction = ref<Interaction | null>(null)
+const showModal = ref(false)
 
 const filterPills = ['All Outcomes', 'Customer Type', 'All Methods', 'All Branches']
 
@@ -415,7 +418,7 @@ const getNextInteractionBadgeColor = (label: string) => {
               </td>
               <td class="px-4 py-3 text-sm text-[#374151]">
                 <div class="flex flex-col items-center">
-                  <Eye class="w-4 h-4 cursor-pointer text-[#4F1964] hover:text-[#380F47]" />
+                  <Eye class="w-4 h-4 cursor-pointer text-[#4F1964] hover:text-[#380F47]" @click="selectedInteraction = interaction; showModal = true" />
                   <AlignJustify class="mt-1 w-4 h-4 cursor-pointer text-[#9CA3AF] hover:text-[#4F1964]" />
                 </div>
               </td>
@@ -434,5 +437,12 @@ const getNextInteractionBadgeColor = (label: string) => {
         <span class="text-[#F9DA82] text-[10px] font-bold mt-0.5">NEW</span>
       </button>
     </div>
+
+    <!-- Interaction Detail Modal -->
+    <InteractionDetailModal
+      :interaction="selectedInteraction"
+      :show="showModal"
+      @close="showModal = false; selectedInteraction = null"
+    />
   </div>
 </template>
