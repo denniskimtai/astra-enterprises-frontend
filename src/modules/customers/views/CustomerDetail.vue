@@ -3,9 +3,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   Info, Phone, CreditCard, List, Users, Users2,
-  Tag, Upload, Clock, MessageSquare, MessageCircle,
-  Pencil, Plus, RefreshCcw, RotateCcw, ExternalLink,
-  ThumbsUp, Eye, CheckCircle
+  Tag, Upload, Pencil, Plus, RefreshCcw, RotateCcw, ExternalLink,
+  ThumbsUp, Eye, CheckCircle, MessageSquare, Flag
 } from 'lucide-vue-next'
 
 interface CustomerLoan {
@@ -31,6 +30,47 @@ interface CustomerPayment {
   payerName: string
   payerPhone: string
   loanId: number
+}
+
+interface Guarantor {
+  name: string
+  idNo: string
+  mobile: string
+  amountGuaranteed: number
+  relationship: string
+}
+
+interface Referee {
+  name: string
+  mobile: string
+  physicalAddress: string
+  relationship: string
+}
+
+interface Collateral {
+  category: string
+  title: string
+  description: string
+  currentWorth: number
+  refNumber: string
+  fileNumber: string
+  addedDate: string
+  status: 'Not Used' | 'In Use'
+}
+
+interface CustomerInteraction {
+  id: number
+  mode: 'Call' | 'Visit' | 'Message'
+  contactStatus: 'Contactable' | 'Promised to Pay' | 'Not Reachable'
+  date: string
+  dateLabel: 'TODAY' | 'YESTERDAY' | 'TOMORROW' | '2 DAYS AGO'
+  time: string
+  agent: string
+  outcome: string
+  nextInteractionDate: string
+  nextInteractionLabel: 'TODAY' | 'TOMORROW' | 'YESTERDAY'
+  loanId: number | null
+  balance: number
 }
 
 interface CustomerDetail {
@@ -60,6 +100,10 @@ interface CustomerDetail {
   secondaryInfo: Record<string, string>
   loan: CustomerLoan | null
   payment: CustomerPayment | null
+  guarantors: Guarantor[]
+  referees: Referee[]
+  collateral: Collateral[]
+  interactions: CustomerInteraction[]
 }
 
 const router = useRouter()
@@ -101,7 +145,29 @@ const customerMap = ref<Record<number, CustomerDetail>>({
       id: 5001, transactionCode: 'TXN-2026-0351', amount: 3500,
       dateRepaid: '28 Apr 2026', dateLabel: 'YESTERDAY',
       payerName: 'Beatrice Wanjiru', payerPhone: '254712345981', loanId: 1001
-    }
+    },
+    guarantors: [
+      { name: 'Stanley Angati', idNo: '27146024', mobile: '254719353897', amountGuaranteed: 0.00, relationship: 'Other' }
+    ],
+    referees: [
+      { name: 'Everlyne Nangabo', mobile: '254759010540', physicalAddress: 'Harambee area', relationship: 'Other' },
+      { name: 'Celestine', mobile: '254790700186', physicalAddress: 'Camcon area', relationship: 'Child' },
+      { name: 'Rahema Atieno', mobile: '254112484291', physicalAddress: 'Mumias area', relationship: 'Parent (Father, Mother)' },
+      { name: 'Amina Amalala', mobile: '254714584870', physicalAddress: 'Mumias area', relationship: 'Sibling (Brother, Sister)' },
+      { name: 'Celestine Atieno', mobile: '254720505022', physicalAddress: 'Camcon area', relationship: 'Child' },
+      { name: 'Christabel Wesa', mobile: '254759063403', physicalAddress: 'Camcon area', relationship: 'Child' }
+    ],
+    collateral: [
+      { category: 'Home Electronics', title: 'Furniture', description: 'Furniture', currentWorth: 15000, refNumber: '', fileNumber: '', addedDate: '2026-04-29 12:35:22', status: 'Not Used' },
+      { category: 'Home Electronics', title: 'Woofer', description: 'Woofer', currentWorth: 3000, refNumber: '', fileNumber: '', addedDate: '2026-04-29 12:35:01', status: 'Not Used' },
+      { category: 'Home Electronics', title: 'Television', description: '32 inch tv', currentWorth: 10000, refNumber: '', fileNumber: '', addedDate: '2026-04-29 12:34:34', status: 'Not Used' },
+      { category: 'Kitchen Appliance', title: 'Gas', description: 'Gas', currentWorth: 1500, refNumber: '', fileNumber: '', addedDate: '2026-04-29 12:34:06', status: 'Not Used' },
+      { category: 'Kitchen Appliance', title: 'Gas', description: 'Gas', currentWorth: 1500, refNumber: '', fileNumber: '', addedDate: '2026-04-29 12:33:50', status: 'Not Used' }
+    ],
+    interactions: [
+      { id: 402773, mode: 'Call', contactStatus: 'Promised to Pay', date: '2026-04-29', dateLabel: 'TODAY', time: '02:33PM', agent: 'Sarah Simiyu', outcome: 'Client has taken a loan of kes 8000, have educated her on terms and conditions, she has agreed to make payment of kes 470 Kindly fund.', nextInteractionDate: '2026-04-30', nextInteractionLabel: 'TOMORROW', loanId: 86155, balance: 0.00 },
+      { id: 402703, mode: 'Call', contactStatus: 'Contactable', date: '2026-04-29', dateLabel: 'TODAY', time: '01:23PM', agent: 'Sarah Simiyu', outcome: 'To be onboarded today', nextInteractionDate: '2026-04-30', nextInteractionLabel: 'TOMORROW', loanId: null, balance: 0.00 }
+    ]
   },
   2002: {
     id: 2002, photo: 'https://i.pravatar.cc/160?u=2002', fullName: 'Isaac Njoroge',
@@ -137,7 +203,19 @@ const customerMap = ref<Record<number, CustomerDetail>>({
       id: 5002, transactionCode: 'TXN-2026-0289', amount: 11600,
       dateRepaid: '29 Apr 2026', dateLabel: 'TODAY',
       payerName: 'Isaac Njoroge', payerPhone: '254700223344', loanId: 1002
-    }
+    },
+    guarantors: [
+      { name: 'John Doe', idNo: '12345678', mobile: '254700000001', amountGuaranteed: 5000, relationship: 'Friend' }
+    ],
+    referees: [
+      { name: 'Mary Doe', mobile: '254700000002', physicalAddress: 'Nairobi', relationship: 'Sibling' }
+    ],
+    collateral: [
+      { category: 'Electronics', title: 'Laptop', description: 'Dell Laptop', currentWorth: 25000, refNumber: 'REF001', fileNumber: 'FILE001', addedDate: '2026-04-15', status: 'In Use' }
+    ],
+    interactions: [
+      { id: 402650, mode: 'Visit', contactStatus: 'Contactable', date: '2026-04-28', dateLabel: 'YESTERDAY', time: '10:15AM', agent: 'Joseph Mwangi', outcome: 'Business visit completed. Stock levels look good.', nextInteractionDate: '2026-05-01', nextInteractionLabel: 'TOMORROW', loanId: 86120, balance: 5000.00 }
+    ]
   },
   2003: {
     id: 2003, photo: 'https://i.pravatar.cc/160?u=2003', fullName: 'Mercy Kilonzo',
@@ -165,7 +243,16 @@ const customerMap = ref<Record<number, CustomerDetail>>({
       '15': 'Social Media', '44': 'Kisumu', '52': 'Kisumu County', '53': ''
     },
     loan: null,
-    payment: null
+    payment: null,
+    guarantors: [
+      { name: 'Peter Smith', idNo: '87654321', mobile: '254700000003', amountGuaranteed: 2000, relationship: 'Colleague' }
+    ],
+    referees: [
+      { name: 'Jane Smith', mobile: '254700000004', physicalAddress: 'Kisumu', relationship: 'Friend' }
+    ],
+    collateral: [
+      { category: 'Vehicle', title: 'Motorcycle', description: 'Yamaha', currentWorth: 50000, refNumber: '', fileNumber: '', addedDate: '2026-04-10', status: 'Not Used' }
+    ]
   },
   2004: {
     id: 2004, photo: 'https://i.pravatar.cc/160?u=2004', fullName: 'Sharon Ouma',
@@ -201,7 +288,19 @@ const customerMap = ref<Record<number, CustomerDetail>>({
       id: 5004, transactionCode: 'TXN-2026-0378', amount: 5750,
       dateRepaid: '27 Apr 2026', dateLabel: '2 DAYS AGO',
       payerName: 'Sharon Ouma', payerPhone: '254798334455', loanId: 1004
-    }
+    },
+    guarantors: [
+      { name: 'James Ochieng', idNo: '34567890', mobile: '254700000005', amountGuaranteed: 10000, relationship: 'Brother' }
+    ],
+    referees: [
+      { name: 'Grace Atieno', mobile: '254700000006', physicalAddress: 'Mombasa', relationship: 'Mother' }
+    ],
+    collateral: [
+      { category: 'Jewelry', title: 'Gold Ring', description: '24K Gold', currentWorth: 8000, refNumber: '', fileNumber: '', addedDate: '2026-04-20', status: 'Not Used' }
+    ],
+    interactions: [
+      { id: 402800, mode: 'Call', contactStatus: 'Promised to Pay', date: '2026-04-29', dateLabel: 'TODAY', time: '09:45AM', agent: 'Alice Karanja', outcome: 'Customer promised to make payment by end of day.', nextInteractionDate: '2026-04-30', nextInteractionLabel: 'TOMORROW', loanId: 86180, balance: 11500.00 }
+    ]
   },
   2005: {
     id: 2005, photo: 'https://i.pravatar.cc/160?u=2005', fullName: 'Kenneth Otieno',
@@ -237,7 +336,19 @@ const customerMap = ref<Record<number, CustomerDetail>>({
       id: 5005, transactionCode: 'TXN-2026-0412', amount: 2300,
       dateRepaid: '26 Apr 2026', dateLabel: '3 DAYS AGO',
       payerName: 'Kenneth Otieno', payerPhone: '254713667788', loanId: 1005
-    }
+    },
+    guarantors: [
+      { name: 'Robert Kiprotich', idNo: '45678901', mobile: '254700000007', amountGuaranteed: 3000, relationship: 'Friend' }
+    ],
+    referees: [
+      { name: 'Sarah Kemunto', mobile: '254700000008', physicalAddress: 'Mumias', relationship: 'Sister' }
+    ],
+    collateral: [
+      { category: 'Electronics', title: 'Phone', description: 'iPhone 13', currentWorth: 35000, refNumber: 'REF002', fileNumber: 'FILE002', addedDate: '2026-04-05', status: 'In Use' }
+    ],
+    interactions: [
+      { id: 402710, mode: 'Message', contactStatus: 'Not Reachable', date: '2026-04-28', dateLabel: 'YESTERDAY', time: '03:30PM', agent: 'Amanda Ndegwa', outcome: 'SMS sent regarding loan repayment.', nextInteractionDate: '2026-04-29', nextInteractionLabel: 'TODAY', loanId: 86100, balance: 6900.00 }
+    ]
   }
 })
 
@@ -271,12 +382,13 @@ const tabs = [
   { id: 'referees', label: 'Referees', icon: Users2 },
   { id: 'collateral', label: 'Collateral', icon: Tag },
   { id: 'uploads', label: 'Uploads', icon: Upload },
-  { id: 'events', label: 'Events', icon: Clock },
-  { id: 'interactions', label: 'Interactions', icon: MessageSquare },
-  { id: 'messages', label: 'Messages', icon: MessageCircle }
+  { id: 'interactions', label: 'Interactions', icon: MessageSquare }
 ]
 
 const handleAction = (action: string) => console.log(action)
+
+const currentPage = ref(1)
+const perPage = ref(10)
 </script>
 
 <template>
@@ -765,6 +877,239 @@ const handleAction = (action: string) => console.log(action)
               </div>
               <div v-if="customer.payment" class="mt-3 px-1">
                 <span class="text-sm font-bold text-[#1A1A2E]">Total: {{ formatCurrency(customer.payment.amount) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Guarantors Tab -->
+          <div v-if="activeTab === 'guarantors'" class="flex gap-6 p-6 bg-white rounded-lg border border-[#E5E0EA]">
+            <!-- Left Icon -->
+            <div class="w-20 h-20 shrink-0 bg-[#F3F4F6] rounded-lg flex items-center justify-center">
+              <Users class="w-10 h-10 text-[#9CA3AF]" />
+            </div>
+            <!-- Right Content -->
+            <div class="flex-1 relative">
+              <button class="absolute top-0 right-0 bg-[#166534] hover:bg-[#14532D] text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2">
+                <Plus class="w-4 h-4" />
+                Add/Edit Guarantor
+              </button>
+              <table class="w-full mt-2">
+                <thead>
+                  <tr>
+                    <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 mb-0 border-b border-[#E5E0EA]">Name</th>
+                    <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 mb-0 border-b border-[#E5E0EA]">ID No.</th>
+                    <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 mb-0 border-b border-[#E5E0EA]">Mobile No.</th>
+                    <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 mb-0 border-b border-[#E5E0EA]">Amount Guaranteed</th>
+                    <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 mb-0 border-b border-[#E5E0EA]">Relationship</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(guarantor, index) in customer.guarantors" :key="index" :class="['border-b border-[#F3F4F6] py-2 text-sm text-[#4B4B6B]', index % 2 === 0 ? 'bg-white' : 'bg-[#F8F7FA]']">
+                    <td class="py-2">{{ guarantor.name }}</td>
+                    <td class="py-2">{{ guarantor.idNo }}</td>
+                    <td class="py-2">
+                      <span class="text-[#4F1964] underline text-xs cursor-pointer">{{ guarantor.mobile }}</span>
+                    </td>
+                    <td class="py-2 text-[#1A1A2E] text-xs font-medium">{{ formatCurrency(guarantor.amountGuaranteed) }}</td>
+                    <td class="py-2">{{ guarantor.relationship }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Referees Tab -->
+          <div v-if="activeTab === 'referees'" class="flex gap-6 p-6 bg-white rounded-lg border border-[#E5E0EA]">
+            <!-- Left Icon -->
+            <div class="w-20 h-20 shrink-0 bg-[#F3F4F6] rounded-lg flex items-center justify-center">
+              <Users2 class="w-10 h-10 text-[#9CA3AF]" />
+            </div>
+            <!-- Right Content -->
+            <div class="flex-1 relative">
+              <button class="absolute top-0 right-0 bg-[#166534] hover:bg-[#14532D] text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2">
+                <Plus class="w-4 h-4" />
+                Add/Edit Referee
+              </button>
+              <table class="w-full mt-2">
+                <thead>
+                  <tr>
+                    <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 mb-0 border-b border-[#E5E0EA]">Name</th>
+                    <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 mb-0 border-b border-[#E5E0EA]">Mobile No.</th>
+                    <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 mb-0 border-b border-[#E5E0EA]">Physical Address</th>
+                    <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 mb-0 border-b border-[#E5E0EA]">Relationship</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(referee, index) in customer.referees" :key="index" :class="['border-b border-[#F3F4F6] py-2 text-sm text-[#4B4B6B]', index % 2 === 0 ? 'bg-white' : 'bg-[#F8F7FA]']">
+                    <td class="py-2">{{ referee.name }}</td>
+                    <td class="py-2">
+                      <span class="text-[#4F1964] underline text-xs cursor-pointer">{{ referee.mobile }}</span>
+                    </td>
+                    <td class="py-2">{{ referee.physicalAddress }}</td>
+                    <td class="py-2">{{ referee.relationship }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Collateral Tab -->
+          <div v-if="activeTab === 'collateral'" class="flex gap-6 p-6 bg-white rounded-lg border border-[#E5E0EA]">
+            <!-- Left Icon -->
+            <div class="w-20 h-20 shrink-0 bg-[#F3F4F6] rounded-lg flex items-center justify-center">
+              <Tag class="w-10 h-10 text-[#9CA3AF]" />
+            </div>
+            <!-- Right Content -->
+            <div class="flex-1 relative">
+              <button class="absolute top-0 right-0 bg-[#166534] hover:bg-[#14532D] text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2">
+                <Plus class="w-4 h-4" />
+                Add/Edit Collateral
+              </button>
+              <table class="w-full mt-2">
+                <thead>
+                  <tr>
+                    <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 mb-0 border-b border-[#E5E0EA]">Category</th>
+                    <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 mb-0 border-b border-[#E5E0EA]">Title</th>
+                    <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 mb-0 border-b border-[#E5E0EA]">Description</th>
+                    <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 mb-0 border-b border-[#E5E0EA]">Current Worth</th>
+                    <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 mb-0 border-b border-[#E5E0EA]">Ref Number</th>
+                    <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 mb-0 border-b border-[#E5E0EA]">File Number</th>
+                    <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 mb-0 border-b border-[#E5E0EA]">Added Date</th>
+                    <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 mb-0 border-b border-[#E5E0EA]">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(item, index) in customer.collateral" :key="index" :class="['border-b border-[#F3F4F6] py-2 text-sm text-[#4B4B6B]', index % 2 === 0 ? 'bg-white' : 'bg-[#F8F7FA]']">
+                    <td class="py-2">{{ item.category }}</td>
+                    <td class="py-2">{{ item.title }}</td>
+                    <td class="py-2">{{ item.description }}</td>
+                    <td class="py-2 text-[#1A1A2E] text-xs font-medium">{{ formatCurrency(item.currentWorth) }}</td>
+                    <td class="py-2">{{ item.refNumber }}</td>
+                    <td class="py-2">{{ item.fileNumber }}</td>
+                    <td class="py-2">{{ item.addedDate }}</td>
+                    <td class="py-2">
+                      <span :class="['text-xs', item.status === 'In Use' ? 'text-[#166534] font-semibold' : 'text-[#9CA3AF]']">
+                        {{ item.status }}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Interactions Tab -->
+          <div v-if="activeTab === 'interactions'" class="flex gap-6 p-6 bg-white rounded-lg border border-[#E5E0EA]">
+            <!-- Left Icon -->
+            <div class="w-20 h-20 shrink-0 bg-[#F3F4F6] rounded-lg flex items-center justify-center">
+              <MessageSquare class="w-10 h-10 text-[#9CA3AF]" />
+            </div>
+            <!-- Right Content -->
+            <div class="flex-1 w-full">
+              <!-- Filter Bar -->
+              <div class="mb-4 space-y-3">
+                <!-- Row 1 -->
+                <div class="flex flex-wrap items-center gap-2">
+                  <!-- Toggle Group -->
+                  <div class="flex rounded-md overflow-hidden border border-[#E5E0EA]">
+                    <button class="px-3 py-1.5 text-xs font-medium bg-[#4F1964] text-white">All</button>
+                    <button class="px-3 py-1.5 text-xs font-medium bg-white text-[#4B4B6B] hover:bg-[#F8F7FA]">My</button>
+                    <button class="px-3 py-1.5 text-xs font-medium bg-white text-[#4B4B6B] hover:bg-[#F8F7FA]">PTPs</button>
+                  </div>
+                  <!-- Dropdowns -->
+                  <select class="px-3 py-1.5 text-xs border border-[#E5E0EA] rounded-md bg-white text-[#4B4B6B]">
+                    <option>All Outcomes</option>
+                  </select>
+                  <select class="px-3 py-1.5 text-xs border border-[#E5E0EA] rounded-md bg-white text-[#4B4B6B]">
+                    <option>Customer Type</option>
+                  </select>
+                  <select class="px-3 py-1.5 text-xs border border-[#E5E0EA] rounded-md bg-white text-[#4B4B6B]">
+                    <option>All Methods</option>
+                  </select>
+                  <!-- Pills -->
+                  <span class="px-2 py-1 text-xs font-medium rounded-full bg-[#4F1964] text-white cursor-pointer">Due Today</span>
+                  <span class="px-2 py-1 text-xs font-medium rounded-full bg-[#F9DA82] text-[#1A1A2E] cursor-pointer">Overdue</span>
+                  <!-- Date Input -->
+                  <input type="text" placeholder="Interaction date" class="px-3 py-1.5 text-xs border border-[#E5E0EA] rounded-md bg-white text-[#4B4B6B] w-36" />
+                </div>
+                <!-- Row 2 -->
+                <div class="flex items-center gap-2">
+                  <button class="px-3 py-1.5 text-xs font-medium rounded-md border border-[#E5E0EA] bg-white text-[#4B4B6B]">Next date</button>
+                </div>
+              </div>
+
+              <!-- Table -->
+              <div class="border border-[#E5E0EA] rounded-lg overflow-hidden">
+                <div class="grid grid-cols-8 bg-[#F8F7FA] px-3 py-2">
+                  <span class="text-[#4F1964] text-xs font-semibold uppercase tracking-wider">ID</span>
+                  <span class="text-[#4F1964] text-xs font-semibold uppercase tracking-wider">Interaction Mode</span>
+                  <span class="text-[#4F1964] text-xs font-semibold uppercase tracking-wider">Date</span>
+                  <span class="text-[#4F1964] text-xs font-semibold uppercase tracking-wider">Agent</span>
+                  <span class="text-[#4F1964] text-xs font-semibold uppercase tracking-wider">Outcome</span>
+                  <span class="text-[#4F1964] text-xs font-semibold uppercase tracking-wider">Next Interaction</span>
+                  <span class="text-[#4F1964] text-xs font-semibold uppercase tracking-wider">Loan ID</span>
+                  <span class="text-[#4F1964] text-xs font-semibold uppercase tracking-wider">Action</span>
+                </div>
+                <div v-for="(interaction, index) in customer.interactions" :key="interaction.id" :class="['grid grid-cols-8 items-center px-3 py-3 border-b border-[#F3F4F6]', index % 2 === 0 ? 'bg-white' : 'bg-[#F8F7FA]']">
+                  <!-- ID -->
+                  <span class="font-mono text-xs text-[#4B4B6B]">{{ interaction.id }}</span>
+                  <!-- Interaction Mode -->
+                  <div class="space-y-1">
+                    <div class="flex items-center gap-1">
+                      <Phone class="w-3 h-3 text-[#4F1964]" />
+                      <span class="text-xs text-[#4B4B6B]">{{ interaction.mode }}</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                      <Flag class="w-3 h-3" :class="interaction.contactStatus === 'Promised to Pay' ? 'text-[#166534]' : 'text-[#F9DA82]'" />
+                      <span :class="['text-xs font-medium', interaction.contactStatus === 'Promised to Pay' ? 'text-[#166534]' : 'text-[#6B2385]']">
+                        {{ interaction.contactStatus }}
+                      </span>
+                    </div>
+                  </div>
+                  <!-- Date -->
+                  <div class="space-y-1">
+                    <div class="text-xs text-[#1A1A2E]">{{ interaction.date }}</div>
+                    <span :class="['inline-block text-[10px] font-bold px-2 py-0.5 rounded-full', interaction.dateLabel === 'TODAY' ? 'bg-[#6B2385] text-white' : interaction.dateLabel === 'YESTERDAY' ? 'bg-gradient-to-r from-[#4F1964] to-[#6B2385] text-white' : 'bg-[#F9DA82] text-[#1A1A2E]']">
+                      {{ interaction.dateLabel }}
+                    </span>
+                    <div class="text-[10px] text-[#9CA3AF]">{{ interaction.time }}</div>
+                  </div>
+                  <!-- Agent -->
+                  <span class="text-xs text-[#1A1A2E] font-medium">{{ interaction.agent }}</span>
+                  <!-- Outcome -->
+                  <span class="text-xs text-[#4B4B6B] leading-relaxed max-w-xs line-clamp-3">{{ interaction.outcome }}</span>
+                  <!-- Next Interaction -->
+                  <div class="space-y-1">
+                    <div class="text-xs text-[#1A1A2E]">{{ interaction.nextInteractionDate }}</div>
+                    <span :class="['inline-block text-[10px] font-bold px-2 py-0.5 rounded-full', interaction.nextInteractionLabel === 'TODAY' ? 'bg-[#6B2385] text-white' : interaction.nextInteractionLabel === 'TOMORROW' ? 'bg-[#F9DA82] text-[#1A1A2E]' : 'bg-gradient-to-r from-[#4F1964] to-[#6B2385] text-white']">
+                      {{ interaction.nextInteractionLabel }}
+                    </span>
+                  </div>
+                  <!-- Loan ID -->
+                  <div class="space-y-1">
+                    <div><span class="text-[#9CA3AF] text-xs">Loan ID:</span> <span class="text-[#1A1A2E] text-xs font-semibold">{{ interaction.loanId || '-' }}</span></div>
+                    <div><span class="text-[#9CA3AF] text-xs">Balance:</span> <span :class="['text-xs font-bold', interaction.balance > 0 ? 'text-[#E8604A]' : 'text-[#1A1A2E]']">{{ formatCurrency(interaction.balance) }}</span></div>
+                  </div>
+                  <!-- Action -->
+                  <Eye class="w-4 h-4 text-[#4F1964] cursor-pointer" />
+                </div>
+              </div>
+
+              <!-- Pagination -->
+              <div class="flex items-center justify-between mt-4">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs text-[#4B4B6B]">Per page:</span>
+                  <select v-model="perPage" class="px-2 py-1 text-xs border border-[#E5E0EA] rounded-md bg-white">
+                    <option :value="10">10</option>
+                    <option :value="25">25</option>
+                    <option :value="50">50</option>
+                  </select>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button class="px-3 py-1 text-xs border border-[#E5E0EA] rounded-md bg-white text-[#4B4B6B] disabled:opacity-50">Previous</button>
+                  <span class="px-3 py-1 text-xs font-medium text-[#4F1964]">1</span>
+                  <button class="px-3 py-1 text-xs border border-[#E5E0EA] rounded-md bg-white text-[#4B4B6B] disabled:opacity-50">Next</button>
+                </div>
               </div>
             </div>
           </div>
