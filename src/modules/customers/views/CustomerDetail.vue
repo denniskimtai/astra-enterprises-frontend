@@ -4,8 +4,34 @@ import { useRouter, useRoute } from 'vue-router'
 import {
   Info, Phone, CreditCard, List, Users, Users2,
   Tag, Upload, Clock, MessageSquare, MessageCircle,
-  Pencil, Plus, RefreshCcw, RotateCcw
+  Pencil, Plus, RefreshCcw, RotateCcw, ExternalLink,
+  ThumbsUp, Eye, CheckCircle
 } from 'lucide-vue-next'
+
+interface CustomerLoan {
+  uid: number
+  principal: number
+  repayableTotal: number
+  totalRepaid: number
+  totalBalance: number
+  givenDate: string
+  dueDate: string
+  daysUntilDue: number
+  loName: string
+  coName: string
+  status: 'Disbursed' | 'Pending' | 'Defaulted'
+}
+
+interface CustomerPayment {
+  id: number
+  transactionCode: string
+  amount: number
+  dateRepaid: string
+  dateLabel: 'TODAY' | 'YESTERDAY' | '2 DAYS AGO'
+  payerName: string
+  payerPhone: string
+  loanId: number
+}
 
 interface CustomerDetail {
   id: number
@@ -32,6 +58,8 @@ interface CustomerDetail {
   businessInfo: Record<string, string>
   operatorAssessment: Record<string, string>
   secondaryInfo: Record<string, string>
+  loan: CustomerLoan | null
+  payment: CustomerPayment | null
 }
 
 const router = useRouter()
@@ -63,6 +91,16 @@ const customerMap = ref<Record<number, CustomerDetail>>({
       '5': 'Single', '6': '2', '7': '', '8': '', '9': 'Rented', '10': '', '11': '', '12': '5000',
       '13': 'Mumias Primary School', '14': 'https://www.google.com/maps?q=0.338785,34.4910588',
       '15': 'Pembeni Person', '44': 'Mumias', '52': 'Kakamega County', '53': ''
+    },
+    loan: {
+      uid: 1001, principal: 10000, repayableTotal: 11500, totalRepaid: 3500, totalBalance: 8000,
+      givenDate: '01 Mar 2026', dueDate: '28 May 2026', daysUntilDue: 29,
+      loName: 'Joseph Mwangi', coName: 'Sarah Kemunto', status: 'Disbursed'
+    },
+    payment: {
+      id: 5001, transactionCode: 'TXN-2026-0351', amount: 3500,
+      dateRepaid: '28 Apr 2026', dateLabel: 'YESTERDAY',
+      payerName: 'Beatrice Wanjiru', payerPhone: '254712345981', loanId: 1001
     }
   },
   2002: {
@@ -89,6 +127,16 @@ const customerMap = ref<Record<number, CustomerDetail>>({
       '5': 'Married', '6': '4', '7': '', '8': '', '9': 'Owned', '10': '', '11': '', '12': '250000',
       '13': 'Narok Town Hall', '14': 'https://www.google.com/maps?q=-1.0789,35.8604',
       '15': 'Existing Customer', '44': 'Narok', '52': 'Narok County', '53': ''
+    },
+    loan: {
+      uid: 1002, principal: 20000, repayableTotal: 23200, totalRepaid: 11600, totalBalance: 11600,
+      givenDate: '15 Feb 2026', dueDate: '15 May 2026', daysUntilDue: 16,
+      loName: 'Grace Achieng', coName: 'David Maina', status: 'Disbursed'
+    },
+    payment: {
+      id: 5002, transactionCode: 'TXN-2026-0289', amount: 11600,
+      dateRepaid: '29 Apr 2026', dateLabel: 'TODAY',
+      payerName: 'Isaac Njoroge', payerPhone: '254700223344', loanId: 1002
     }
   },
   2003: {
@@ -115,7 +163,9 @@ const customerMap = ref<Record<number, CustomerDetail>>({
       '5': 'Single', '6': '1', '7': '', '8': '', '9': 'Rented', '10': '', '11': '8000', '12': '',
       '13': 'Kisumu County Hospital', '14': 'https://www.google.com/maps?q=-0.1022,34.7617',
       '15': 'Social Media', '44': 'Kisumu', '52': 'Kisumu County', '53': ''
-    }
+    },
+    loan: null,
+    payment: null
   },
   2004: {
     id: 2004, photo: 'https://i.pravatar.cc/160?u=2004', fullName: 'Sharon Ouma',
@@ -141,6 +191,16 @@ const customerMap = ref<Record<number, CustomerDetail>>({
       '5': 'Married', '6': '3', '7': '', '8': '', '9': 'Rented', '10': '', '11': '15000', '12': '',
       '13': 'Mombasa Railway Station', '14': 'https://www.google.com/maps?q=-4.0437,39.6689',
       '15': 'Word of Mouth', '44': 'Mombasa', '52': 'Mombasa County', '53': ''
+    },
+    loan: {
+      uid: 1004, principal: 15000, repayableTotal: 17250, totalRepaid: 5750, totalBalance: 11500,
+      givenDate: '20 Mar 2026', dueDate: '20 Jun 2026', daysUntilDue: 52,
+      loName: 'Alice Karanja', coName: 'James Ochieng', status: 'Disbursed'
+    },
+    payment: {
+      id: 5004, transactionCode: 'TXN-2026-0378', amount: 5750,
+      dateRepaid: '27 Apr 2026', dateLabel: '2 DAYS AGO',
+      payerName: 'Sharon Ouma', payerPhone: '254798334455', loanId: 1004
     }
   },
   2005: {
@@ -167,6 +227,16 @@ const customerMap = ref<Record<number, CustomerDetail>>({
       '5': 'Single', '6': '2', '7': '', '8': '', '9': 'Owned', '10': '', '11': '', '12': '8000',
       '13': 'Mumias Police Station', '14': 'https://www.google.com/maps?q=0.338785,34.4910588',
       '15': 'Existing Customer', '44': 'Mumias', '52': 'Kakamega County', '53': ''
+    },
+    loan: {
+      uid: 1005, principal: 8000, repayableTotal: 9200, totalRepaid: 2300, totalBalance: 6900,
+      givenDate: '10 Apr 2026', dueDate: '10 Jul 2026', daysUntilDue: 72,
+      loName: 'Amanda Ndegwa', coName: 'Robert Kiprotich', status: 'Disbursed'
+    },
+    payment: {
+      id: 5005, transactionCode: 'TXN-2026-0412', amount: 2300,
+      dateRepaid: '26 Apr 2026', dateLabel: '3 DAYS AGO',
+      payerName: 'Kenneth Otieno', payerPhone: '254713667788', loanId: 1005
     }
   }
 })
@@ -255,7 +325,7 @@ const handleAction = (action: string) => console.log(action)
       <!-- Content Area -->
       <div class="px-6 py-4 flex gap-6 items-start">
         <!-- Main Content -->
-        <div class="flex-1">
+        <div :class="activeTab === 'bio' ? 'flex-1' : 'w-full'">
           <!-- Alert Banner -->
           <div
             v-if="customer.pendingLimit"
@@ -524,14 +594,186 @@ const handleAction = (action: string) => console.log(action)
             </div>
           </div>
 
-          <!-- Other Tabs -->
-          <div v-else class="py-16 text-center text-[#9CA3AF] text-sm">
-            Content coming soon
+          <!-- Contact Info Tab -->
+          <div v-if="activeTab === 'contact'" class="flex items-center gap-6 p-6 bg-white rounded-lg border border-[#E5E0EA]">
+            <div class="w-16 h-16 bg-[#F3F4F6] rounded flex items-center justify-center">
+              <Phone class="w-8 h-8 text-[#9CA3AF]" />
+            </div>
+            <div>
+              <span class="text-sm font-bold text-[#1A1A2E]">Primary Phone</span>
+              <div class="text-sm text-[#4B4B6B]">{{ customer.phone }}</div>
+            </div>
+            <div class="ml-12">
+              <span class="text-sm font-bold text-[#1A1A2E]">Last Update</span>
+              <div class="text-[#9CA3AF] text-xs">-</div>
+            </div>
+            <button class="ml-auto bg-[#166534] hover:bg-[#14532D] text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2">
+              <Plus class="w-4 h-4" />
+              Add/Edit Contact
+            </button>
           </div>
+
+          <!-- Account Info Tab -->
+          <div v-if="activeTab === 'account'" class="flex gap-6 p-6">
+            <!-- Left Column -->
+            <div class="flex-1">
+              <h3 class="text-sm font-bold text-[#F9DA82] uppercase tracking-widest mb-3">Summary</h3>
+              
+              <div class="white card border border-[#E5E0EA] rounded-lg overflow-hidden mb-4">
+                <div class="bg-[#F8F7FA] px-4 py-2">
+                  <span class="text-sm font-semibold text-[#1A1A2E]">Account Number</span>
+                </div>
+                <div class="bg-[#1A1A2E] text-white grid grid-cols-2">
+                  <div class="px-4 py-3 border border-[#374151]">
+                    <span class="text-sm">Total Loans</span>
+                  </div>
+                  <div class="px-4 py-3 border border-[#374151] text-right">
+                    <span class="text-sm font-bold">{{ customer.totalLoans }}</span>
+                  </div>
+                  <div class="px-4 py-3 border border-[#374151]">
+                    <span class="text-sm">Amount Borrowed</span>
+                  </div>
+                  <div class="px-4 py-3 border border-[#374151] text-right">
+                    <span class="text-sm font-bold">{{ customer.loan ? formatCurrency(customer.loan.principal) : 'KES 0.00' }}</span>
+                  </div>
+                  <div class="px-4 py-3 border border-[#374151]">
+                    <span class="text-sm">Repayable Total</span>
+                  </div>
+                  <div class="px-4 py-3 border border-[#374151] text-right">
+                    <span class="text-sm font-bold">{{ customer.loan ? formatCurrency(customer.loan.repayableTotal) : 'KES 0.00' }}</span>
+                  </div>
+                  <div class="px-4 py-3 border border-[#374151]">
+                    <span class="text-sm">Total Repaid</span>
+                  </div>
+                  <div class="px-4 py-3 border border-[#374151] text-right">
+                    <span class="text-sm font-bold">{{ customer.loan ? formatCurrency(customer.loan.totalRepaid) : 'KES 0.00' }}</span>
+                  </div>
+                  <div class="px-4 py-3 border border-[#374151]">
+                    <span class="text-sm">Total Balance</span>
+                  </div>
+                  <div class="px-4 py-3 border border-[#374151] text-right">
+                    <span class="text-sm font-bold">{{ customer.loan ? formatCurrency(customer.loan.totalBalance) : 'KES 0.00' }}</span>
+                  </div>
+                  <div class="px-4 py-3 border border-[#374151]">
+                    <span class="text-sm">Money Made</span>
+                  </div>
+                  <div class="px-4 py-3 border border-[#374151] text-right">
+                    <span class="text-sm font-bold">KES 0.00</span>
+                  </div>
+                </div>
+              </div>
+
+              <h3 class="text-sm font-bold text-[#F9DA82] uppercase tracking-widest mt-6 mb-3">All Loans</h3>
+              
+              <div class="white card border border-[#E5E0EA] rounded-lg overflow-hidden">
+                <div class="grid grid-cols-9 bg-[#F8F7FA] px-3 py-2">
+                  <span class="text-[#4F1964] text-xs font-semibold uppercase">UID</span>
+                  <span class="text-[#4F1964] text-xs font-semibold uppercase">Loan Amount</span>
+                  <span class="text-[#4F1964] text-xs font-semibold uppercase">Total Repayable</span>
+                  <span class="text-[#4F1964] text-xs font-semibold uppercase">Paid</span>
+                  <span class="text-[#4F1964] text-xs font-semibold uppercase">Balance</span>
+                  <span class="text-[#4F1964] text-xs font-semibold uppercase col-span-2">Dates</span>
+                  <span class="text-[#4F1964] text-xs font-semibold uppercase">BDO</span>
+                  <span class="text-[#4F1964] text-xs font-semibold uppercase">Status</span>
+                </div>
+                <div v-if="customer.loan" class="grid grid-cols-9 items-center px-3 py-3 border-b border-[#F3F4F6]">
+                  <span class="font-mono text-xs text-[#4B4B6B]">{{ customer.loan.uid }}</span>
+                  <span class="text-xs text-[#1A1A2E] font-medium">{{ formatCurrency(customer.loan.principal) }}</span>
+                  <span class="text-xs text-[#1A1A2E] font-medium">{{ formatCurrency(customer.loan.repayableTotal) }}</span>
+                  <span class="text-xs text-[#1A1A2E] font-medium">{{ formatCurrency(customer.loan.totalRepaid) }}</span>
+                  <span class="text-xs text-[#1A1A2E] font-medium">{{ formatCurrency(customer.loan.totalBalance) }}</span>
+                  <div class="col-span-2 text-xs">
+                    <div class="text-[#4B4B6B]">Given: {{ customer.loan.givenDate }}</div>
+                    <div class="text-[#4B4B6B]">Due: {{ customer.loan.dueDate }}</div>
+                    <span
+                      :class="[
+                        'inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full',
+                        customer.loan.daysUntilDue > 0 ? 'bg-[#1A1A2E] text-white' : 'bg-[#E8604A] text-white'
+                      ]"
+                    >
+                      {{ customer.loan.daysUntilDue > 0 ? `IN ${customer.loan.daysUntilDue} DAYS` : `${Math.abs(customer.loan.daysUntilDue)} DAYS OVERDUE` }}
+                    </span>
+                  </div>
+                  <div class="text-xs">
+                    <div><span class="text-[#9CA3AF]">LO:</span> <span class="text-[#1A1A2E] font-semibold">{{ customer.loan.loName }}</span></div>
+                    <div><span class="text-[#9CA3AF]">CO:</span> <span class="text-[#1A1A2E] font-semibold">{{ customer.loan.coName }}</span></div>
+                  </div>
+                  <span
+                    :class="[
+                      'text-[10px] font-bold px-2 py-0.5 rounded-sm uppercase w-fit',
+                      customer.loan.status === 'Disbursed' ? 'bg-[#4F1964] text-white' :
+                      customer.loan.status === 'Pending' ? 'bg-[#F9DA82] text-[#1A1A2E]' :
+                      'bg-[#E8604A] text-white'
+                    ]"
+                  >
+                    {{ customer.loan.status }}
+                  </span>
+                  <div class="flex gap-2">
+                    <ExternalLink class="w-4 h-4 text-[#6B2385] cursor-pointer" />
+                    <ThumbsUp class="w-4 h-4 text-[#9CA3AF] hover:text-[#4F1964] cursor-pointer" />
+                  </div>
+                </div>
+                <div v-else class="px-3 py-6 text-center text-[#9CA3AF] text-sm">
+                  No loans found
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="flex-1">
+              <h3 class="text-sm font-bold text-[#F9DA82] uppercase tracking-widest mb-3">Payments</h3>
+              
+              <div class="white card border border-[#E5E0EA] rounded-lg overflow-hidden">
+                <div class="grid grid-cols-8 bg-[#F8F7FA] px-3 py-2">
+                  <span class="text-[#4F1964] text-xs font-semibold uppercase">ID</span>
+                  <span class="text-[#4F1964] text-xs font-semibold uppercase col-span-2">Transaction Code</span>
+                  <span class="text-[#4F1964] text-xs font-semibold uppercase">Amount</span>
+                  <span class="text-[#4F1964] text-xs font-semibold uppercase col-span-2">Date Repaid</span>
+                  <span class="text-[#4F1964] text-xs font-semibold uppercase col-span-2">Payer Details</span>
+                  <span class="text-[#4F1964] text-xs font-semibold uppercase">Status</span>
+                  <span class="text-[#4F1964] text-xs font-semibold uppercase">Action</span>
+                </div>
+                <div v-if="customer.payment" class="grid grid-cols-8 items-center px-3 py-3 border-b border-[#F3F4F6]">
+                  <span class="font-mono text-xs text-[#4B4B6B]">{{ customer.payment.id }}</span>
+                  <span class="col-span-2 text-xs font-mono text-[#1A1A2E]">{{ customer.payment.transactionCode }}</span>
+                  <span class="text-xs font-semibold text-[#1A1A2E]">{{ formatCurrency(customer.payment.amount) }}</span>
+                  <div class="col-span-2 text-xs">
+                    <div class="text-[#4B4B6B]">{{ customer.payment.dateRepaid }}</div>
+                    <span
+                      :class="[
+                        'inline-block mt-1 text-[10px] rounded-full px-2 py-0.5',
+                        customer.payment.dateLabel === 'TODAY' ? 'bg-[#6B2385] text-white' :
+                        'bg-gradient-to-r from-[#4F1964] to-[#6B2385] text-white'
+                      ]"
+                    >
+                      {{ customer.payment.dateLabel }}
+                    </span>
+                  </div>
+                  <div class="col-span-2 text-xs">
+                    <div class="text-[#1A1A2E] font-medium">{{ customer.payment.payerName }}</div>
+                    <div class="text-[#9CA3AF]">{{ customer.payment.payerPhone }}</div>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <CheckCircle class="w-3 h-3 text-[#166534]" />
+                    <span class="text-[#166534] text-xs font-semibold">Added</span>
+                  </div>
+                  <Eye class="w-4 h-4 text-[#4F1964] cursor-pointer" />
+                </div>
+                <div v-else class="px-3 py-6 text-center text-[#9CA3AF] text-sm">
+                  No payments found
+                </div>
+              </div>
+              <div v-if="customer.payment" class="mt-3 px-1">
+                <span class="text-sm font-bold text-[#1A1A2E]">Total: {{ formatCurrency(customer.payment.amount) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Other Tabs -->
         </div>
 
         <!-- Right Action Panel -->
-        <div class="w-72 shrink-0 sticky top-6 flex flex-col gap-3">
+        <div v-if="activeTab === 'bio'" class="w-72 shrink-0 sticky top-6 flex flex-col gap-3">
           <!-- Update Profile -->
           <button
             class="w-full h-11 rounded-md text-sm font-medium flex items-center justify-center gap-2 bg-[#4F1964] hover:bg-[#380F47] text-white"
