@@ -4,7 +4,7 @@ import { login as loginRequest } from '@/services/modules/auth.service'
 import type { AuthResponse, LoginPayload, User, UserRole } from '@/types/auth.types'
 
 const STORAGE_KEY = 'astra-auth'
-const BYPASS_AUTH = import.meta.env.VITE_BYPASS_AUTH === 'true'
+const BYPASS_AUTH = true
 const isLoading = ref(false)
 let initialized = false
 
