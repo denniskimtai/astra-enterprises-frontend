@@ -66,6 +66,12 @@ const dashboardRoutes: RouteRecordRaw[] = [
     meta: { layout: 'dashboard', requiresAuth: true, title: 'Approvals' }
   },
   {
+    path: '/loans/:id',
+    name: 'loan-detail',
+    component: () => import('@/modules/loans/views/LoanDetail.vue'),
+    meta: { layout: 'dashboard', requiresAuth: true, title: 'Loan Details' }
+  },
+  {
     path: '/payments',
     name: 'payments',
     component: () => import('@/pages/PaymentsPage.vue'),

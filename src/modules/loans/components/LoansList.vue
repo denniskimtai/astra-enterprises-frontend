@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   RefreshCw,
   ChevronRight,
@@ -15,6 +16,8 @@ import {
 const props = defineProps<{
   view: 'all' | 'defaulters' | 'installments' | 'failing-due' | 'approvals'
 }>()
+
+const router = useRouter()
 
 const viewTitleMap = {
   all: 'Loans',
@@ -510,7 +513,7 @@ watch([filteredData, perPage], () => {
               {{ loan.flagStatus }}
             </td>
             <td class="px-4 py-3 flex flex-col">
-              <button type="button" class="text-[#4F1965] hover:text-[#380F47]">
+              <button type="button" class="text-[#4F1965] hover:text-[#380F47]" @click="router.push(`/loans/${loan.id}`)">
                 <Eye class="w-4 h-4" />
               </button>
               <button type="button" class="mt-1 text-[#F0C84A] hover:text-[#F9DA82]">
