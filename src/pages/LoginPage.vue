@@ -1,29 +1,59 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
-import { loginValidator } from '@/utils/validators'
+import { AuthApiError } from '@/services/modules/auth.service'
+import { emailIsValid } from '@/utils/validators'
 
+const route = useRoute()
 const router = useRouter()
 const { login, isLoading } = useAuth()
 const form = reactive({ email: '', password: '' })
+const fieldErrors = reactive<{ email: string; password: string }>({ email: '', password: '' })
 const error = ref('')
 
-const submit = async () => {
+const clearErrors = () => {
   error.value = ''
-  const validation = loginValidator({ email: form.email, password: form.password })
-  if (!validation.valid) {
-    error.value = validation.message
+  fieldErrors.email = ''
+  fieldErrors.password = ''
+}
+
+const validateForm = (): boolean => {
+  if (!form.email.trim()) {
+    fieldErrors.email = 'Email is required.'
+  } else if (!emailIsValid(form.email)) {
+    fieldErrors.email = 'Enter a valid work email address.'
+  }
+
+  if (!form.password.trim()) {
+    fieldErrors.password = 'Password is required.'
+  }
+
+  return !fieldErrors.email && !fieldErrors.password
+}
+
+const submit = async () => {
+  clearErrors()
+  if (!validateForm()) {
     return
   }
 
-  const success = await login(form.email, form.password)
-  if (success) {
-    await router.push({ name: 'Dashboard' })
-    return
-  }
+  try {
+    await login(form.email, form.password)
+    const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/')
+      ? route.query.redirect
+      : '/dashboard'
+    await router.push(redirect)
+  } catch (loginError) {
+    if (loginError instanceof AuthApiError) {
+      fieldErrors.email = loginError.fieldErrors.email ?? ''
+      fieldErrors.password = loginError.fieldErrors.password ?? ''
+      error.value = Object.keys(loginError.fieldErrors).length > 0 ? '' : loginError.message
+      return
+    }
 
-  error.value = 'Login failed. Please verify your credentials.'
+    error.value = 'Login failed. Please verify your credentials.'
+  }
 }
 </script>
 
@@ -34,7 +64,7 @@ const submit = async () => {
       <p class="mt-2 text-sm text-[#4B4B6B]">Access loan pipelines, approvals, and customer insights with enterprise security.</p>
     </div>
 
-    <form @submit.prevent="submit" class="space-y-5">
+    <form @submit.prevent="submit" class="space-y-5" novalidate>
       <div class="space-y-2">
         <label class="block text-sm font-medium text-[#4B4B6B]" for="email">Email</label>
         <input
@@ -42,8 +72,12 @@ const submit = async () => {
           v-model="form.email"
           type="email"
           autocomplete="username"
-          class="w-full rounded-3xl border border-surface-border bg-surface-muted px-4 py-3 text-sm text-[#1A1A2E] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10"
+          :aria-invalid="Boolean(fieldErrors.email)"
+          aria-describedby="email-error"
+          class="w-full rounded-3xl border bg-surface-muted px-4 py-3 text-sm text-[#1A1A2E] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10"
+          :class="fieldErrors.email ? 'border-red-300' : 'border-surface-border'"
         />
+        <p v-if="fieldErrors.email" id="email-error" class="px-4 text-sm text-red-700">{{ fieldErrors.email }}</p>
       </div>
 
       <div class="space-y-2">
@@ -53,8 +87,12 @@ const submit = async () => {
           v-model="form.password"
           type="password"
           autocomplete="current-password"
-          class="w-full rounded-3xl border border-surface-border bg-surface-muted px-4 py-3 text-sm text-[#1A1A2E] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10"
+          :aria-invalid="Boolean(fieldErrors.password)"
+          aria-describedby="password-error"
+          class="w-full rounded-3xl border bg-surface-muted px-4 py-3 text-sm text-[#1A1A2E] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10"
+          :class="fieldErrors.password ? 'border-red-300' : 'border-surface-border'"
         />
+        <p v-if="fieldErrors.password" id="password-error" class="px-4 text-sm text-red-700">{{ fieldErrors.password }}</p>
       </div>
 
       <div class="flex items-center justify-between text-sm text-[#4B4B6B]">

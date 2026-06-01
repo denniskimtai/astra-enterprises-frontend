@@ -1,42 +1,80 @@
-import axios, { type AxiosError } from 'axios'
+import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { useAuthStore } from '@/stores/auth.store'
-import type { ApiResponse } from '@/types/api.types'
+import type { AuthResponse } from '@/types/auth.types'
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? 'https://api.example.com',
+interface RetriableRequestConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://loansystem-production-9a0e.up.railway.app'
+const API_TIMEOUT_MS = 15000
+
+export const api = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: API_TIMEOUT_MS,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json'
   }
 })
 
+export const authApi = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: API_TIMEOUT_MS,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
+
+let refreshRequest: Promise<string> | null = null
+
 api.interceptors.request.use((config) => {
   const authStore = useAuthStore()
-  if (authStore.token && config.headers) {
-    config.headers.Authorization = `Bearer ${authStore.token}`
+  if (authStore.accessToken) {
+    config.headers.Authorization = `Bearer ${authStore.accessToken}`
   }
+
   return config
 })
 
 api.interceptors.response.use(
-  (response) => {
-    const payload = response.data as ApiResponse<unknown>
-    return payload?.data ?? payload
-  },
-  (error: AxiosError<unknown>) => {
+  (response) => response,
+  async (error: AxiosError) => {
     const authStore = useAuthStore()
-    if (error.response?.status === 401) {
-      authStore.clearAuth()
-      window.location.href = '/login'
+    const originalRequest = error.config as RetriableRequestConfig | undefined
+
+    if (error.response?.status !== 401 || !originalRequest || originalRequest._retry) {
+      return Promise.reject(error)
     }
 
-    const errorMessage = typeof error.response?.data === 'object'
-      ? JSON.stringify(error.response.data)
-      : error.message
+    originalRequest._retry = true
 
-    return Promise.reject({
-      status: error.response?.status ?? 500,
-      message: errorMessage
-    })
+    try {
+      if (!refreshRequest) {
+        refreshRequest = authApi
+          .post<AuthResponse>('/api/auth/refresh', {})
+          .then((response) => {
+            const { accessToken, expiresIn } = response.data
+            authStore.setAccessToken(accessToken, expiresIn)
+            return accessToken
+          })
+          .finally(() => {
+            refreshRequest = null
+          })
+      }
+
+      const accessToken = await refreshRequest
+      originalRequest.headers.Authorization = `Bearer ${accessToken}`
+      return api(originalRequest)
+    } catch (refreshError) {
+      authStore.clearAuth()
+      if (window.location.pathname !== '/login') {
+        window.location.assign('/login')
+      }
+
+      return Promise.reject(refreshError)
+    }
   }
 )
 

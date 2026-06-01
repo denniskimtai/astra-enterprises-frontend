@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useRouter, useRoute, RouterLink } from 'vue-router'
+import { useRoute, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUiStore } from '@/stores/ui.store'
 import { UserRole } from '@/types/auth.types'
@@ -20,7 +20,6 @@ import {
   ChevronRight
 } from 'lucide-vue-next'
 
-const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const uiStore = useUiStore()
@@ -93,8 +92,7 @@ const availableNavigation = computed(() =>
 )
 
 const logout = async () => {
-  authStore.clearAuth()
-  await router.push({ name: 'Login' })
+  await authStore.logout()
 }
 
 const isSectionOpen = (item: typeof navItems[number]) => {
@@ -188,7 +186,7 @@ watch(
           <!-- User Avatar -->
           <div class="flex items-center gap-2">
             <div class="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold">
-              {{ authStore.user?.name?.charAt(0) ?? 'A' }}
+              {{ authStore.user?.fullName?.charAt(0) ?? 'A' }}
             </div>
           </div>
 

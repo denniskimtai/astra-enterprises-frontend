@@ -1,27 +1,29 @@
 export enum UserRole {
-  LOAN_OFFICER = 'LOAN_OFFICER',
-  MANAGER = 'MANAGER',
-  ADMIN = 'ADMIN'
+  LOAN_OFFICER = 'LoanOfficer',
+  MANAGER = 'Manager',
+  ADMIN = 'Admin'
 }
 
 export interface User {
   id: string
-  name: string
   email: string
+  fullName: string
   role: UserRole
+  branchId: string | null
 }
 
 export interface AuthResponse {
-  user: User
-  token: string
-  refreshToken?: string
+  accessToken: string
+  expiresIn: number
 }
 
 export interface AuthState {
   user: User | null
-  token: string
-  refreshToken: string
-  isAuthenticated: boolean
+  accessToken: string | null
+  expiresAt: number | null
+  isInitialized: boolean
+  isLoading: boolean
+  refreshTimerId: number | null
 }
 
 export interface LoginPayload {
