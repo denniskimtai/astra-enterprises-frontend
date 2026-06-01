@@ -84,6 +84,12 @@ const dashboardRoutes: RouteRecordRaw[] = [
     meta: { layout: 'dashboard', requiresAuth: true, title: 'Approvals' }
   },
   {
+    path: '/loans/new',
+    name: 'loans-new',
+    component: () => import('@/modules/loans/views/CreateLoan.vue'),
+    meta: { layout: 'dashboard', requiresAuth: true, title: 'New Loan' }
+  },
+  {
     path: '/loans/:id',
     name: 'loan-detail',
     component: () => import('@/modules/loans/views/LoanDetail.vue'),
@@ -124,6 +130,12 @@ const dashboardRoutes: RouteRecordRaw[] = [
     name: 'settings',
     component: () => import('@/pages/PagePlaceholder.vue'),
     meta: { layout: 'dashboard', requiresAuth: true, title: 'Settings' }
+  },
+  {
+    path: '/settings/loan-products',
+    name: 'settings-loan-products',
+    component: () => import('@/modules/settings/views/LoanProductsList.vue'),
+    meta: { layout: 'dashboard', requiresAuth: true, title: 'Loan Products' }
   },
   {
     path: '/403',

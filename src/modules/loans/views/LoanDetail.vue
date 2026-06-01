@@ -11,460 +11,37 @@ import {
   Clock,
   UserCircle,
   ExternalLink,
-  Flag,
-  ChevronDown,
-  Check,
-  X,
-  Zap,
-  MessageSquare,
-  Plus,
   ArrowRight,
-  ChevronLeft,
-  Edit2,
-  Minus,
-  Car,
-  Printer,
-  Download,
-  Eye
+  Loader2,
+  CheckCircle,
+  XCircle,
+  Send,
+  X
 } from 'lucide-vue-next'
+import { getLoanById, approveLoan, rejectLoan, disburseLoan } from '@/services/modules/loan.service'
+import type { Loan } from '@/types/loan.types'
 
 const route = useRoute()
 const router = useRouter()
 
-interface LoanDetail {
-  id: number
-  mpesaCode: string
-  customerName: string
-  customerAccount: string
-  phone: string
-  principal: number
-  addOns: number
-  deductions: number
-  disbursedAmount: number
-  repayableAmount: number
-  repaid: number
-  balance: number
-  product: string
-  disbursedDate: string
-  disbursedDateLabel: 'TODAY' | 'YESTERDAY' | '2 DAYS AGO'
-  disbursedTime: string
-  dueDate: string
-  daysUntilDue: number
-  lastRepayDate: string
-  clearedDate: string
-  nextRepayDate: string
-  nextRepayLabel: 'TODAY' | 'TOMORROW' | 'YESTERDAY'
-  currentInstalment: number
-  currentInstalmentAmount: number
-  currentLO: string
-  currentCO: string
-  currentCollector: string
-  createdBy: string
-  penaltyAmount: number
-  interestAmount: number
-  stage: string
-  status: 'CREATED' | 'DISBURSED' | 'DEFAULTED'
-  appliedAddons: AppliedAddon[]
-  notAppliedAddons: NotAppliedAddon[]
-  appliedDeductions: DeductionItem[]
-  paySchedule: ScheduleRow[]
-  loanCollateral: LoanCollateral[]
-  repayments: Repayment[]
-}
-
-interface AppliedAddon {
-  name: string
-  amount: number
-  dateApplied: string
-  timeApplied: string
-  dateLabel: 'TODAY' | 'YESTERDAY'
-}
-
-interface NotAppliedAddon {
-  name: string
-  amount: number
-  status: 'Not Added' | 'Added'
-}
-
-interface DeductionItem {
-  name: string
-  amount: number
-  dateApplied: string
-  timeApplied: string
-  dateLabel: 'TODAY' | 'YESTERDAY'
-}
-
-interface ScheduleRow {
-  date: string
-  amount: number
-  balance: number
-  status: 'Repaid' | 'Unpaid'
-}
-
-interface LoanCollateral {
-  name: string
-  type: string
-  status: 'Not Used' | 'In Use'
-}
-
-interface Repayment {
-  id: number
-  transactionCode: string
-  amount: number
-  dateRepaid: string
-  dateLabel: 'TODAY' | 'YESTERDAY'
-  payerName: string
-  payerPhone: string
-  paymentMethod: string
-  status: 'Added'
-}
-
-const mockLoans: LoanDetail[] = [
-  {
-    id: 3001,
-    mpesaCode: '',
-    customerName: 'Amina Mwende',
-    customerAccount: 'ACC-78234',
-    phone: '254712345678',
-    principal: 12000,
-    addOns: 1450,
-    deductions: 600,
-    disbursedAmount: 12000,
-    repayableAmount: 15850,
-    repaid: 3200,
-    balance: 12650,
-    product: 'Personal Loan',
-    disbursedDate: '18 Apr 2026',
-    disbursedDateLabel: 'TODAY',
-    disbursedTime: '08:20 AM',
-    dueDate: '18 May 2026',
-    daysUntilDue: 29,
-    lastRepayDate: '',
-    clearedDate: '',
-    nextRepayDate: '29 Apr 2026',
-    nextRepayLabel: 'TOMORROW',
-    currentInstalment: 1,
-    currentInstalmentAmount: 3170,
-    currentLO: 'Grace Achieng',
-    currentCO: 'Peter Njoroge',
-    currentCollector: '',
-    createdBy: 'Sarah Wairimu',
-    penaltyAmount: 0,
-    interestAmount: 3850,
-    stage: 'Initiation',
-    status: 'DISBURSED',
-    appliedAddons: [
-      { name: 'Initial Interest', amount: 240.00, dateApplied: '2026-04-29', timeApplied: '17:34:50', dateLabel: 'TODAY' },
-      { name: 'Main Interest', amount: 1680.00, dateApplied: '2026-04-29', timeApplied: '17:34:50', dateLabel: 'TODAY' },
-      { name: 'Registration Fees', amount: 500.00, dateApplied: '2026-04-29', timeApplied: '17:34:50', dateLabel: 'TODAY' }
-    ],
-    notAppliedAddons: [
-      { name: 'Late Interest', amount: 1.00, status: 'Not Added' },
-      { name: 'Block Addon', amount: 24.00, status: 'Not Added' },
-      { name: 'Initial Interest', amount: 3.00, status: 'Added' },
-      { name: 'Main Interest', amount: 21.00, status: 'Added' },
-      { name: 'Registration Fees', amount: 500.00, status: 'Added' }
-    ],
-    appliedDeductions: [],
-    paySchedule: [
-      { date: '2026-04-30', amount: 348.00, balance: 0.00, status: 'Repaid' },
-      { date: '2026-05-01', amount: 348.00, balance: 0.00, status: 'Repaid' },
-      { date: '2026-05-02', amount: 348.00, balance: 348.00, status: 'Unpaid' },
-      { date: '2026-05-03', amount: 348.00, balance: 696.00, status: 'Unpaid' },
-      { date: '2026-05-04', amount: 348.00, balance: 1044.00, status: 'Unpaid' },
-      { date: '2026-05-05', amount: 348.00, balance: 1392.00, status: 'Unpaid' },
-      { date: '2026-05-06', amount: 348.00, balance: 1740.00, status: 'Unpaid' },
-      { date: '2026-05-07', amount: 348.00, balance: 2088.00, status: 'Unpaid' },
-      { date: '2026-05-08', amount: 348.00, balance: 2436.00, status: 'Unpaid' },
-      { date: '2026-05-09', amount: 348.00, balance: 2784.00, status: 'Unpaid' },
-      { date: '2026-05-10', amount: 348.00, balance: 3132.00, status: 'Unpaid' },
-      { date: '2026-05-11', amount: 348.00, balance: 3480.00, status: 'Unpaid' },
-      { date: '2026-05-12', amount: 348.00, balance: 3828.00, status: 'Unpaid' },
-      { date: '2026-05-13', amount: 348.00, balance: 4176.00, status: 'Unpaid' },
-      { date: '2026-05-14', amount: 348.00, balance: 4524.00, status: 'Unpaid' }
-    ],
-    loanCollateral: [
-      { name: 'Gas', type: '', status: 'Not Used' },
-      { name: 'Sofa set', type: '', status: 'Not Used' },
-      { name: 'Woofer', type: '', status: 'Not Used' },
-      { name: 'Television', type: '', status: 'Not Used' }
-    ],
-    repayments: [
-      { id: 1437842, transactionCode: 'UDT822HDSK', amount: 740.00, dateRepaid: '2026-04-29', dateLabel: 'TODAY', payerName: 'Faridah Anyanga Wesonga', payerPhone: '254795056307', paymentMethod: 'Mobile Payment', status: 'Added' }
-    ]
-  },
-  {
-    id: 3002,
-    mpesaCode: '',
-    customerName: 'Josephat Kamau',
-    customerAccount: 'ACC-65123',
-    phone: '254700123456',
-    principal: 8000,
-    addOns: 800,
-    deductions: 400,
-    disbursedAmount: 8000,
-    repayableAmount: 10400,
-    repaid: 2000,
-    balance: 8400,
-    product: 'Business Loan',
-    disbursedDate: '17 Apr 2026',
-    disbursedDateLabel: 'YESTERDAY',
-    disbursedTime: '10:15 AM',
-    dueDate: '10 May 2026',
-    daysUntilDue: 21,
-    lastRepayDate: '',
-    clearedDate: '',
-    nextRepayDate: '29 Apr 2026',
-    nextRepayLabel: 'TOMORROW',
-    currentInstalment: 1,
-    currentInstalmentAmount: 2600,
-    currentLO: 'Mercy Otieno',
-    currentCO: 'Daniel Kipkoech',
-    currentCollector: '',
-    createdBy: 'Alice Kamau',
-    penaltyAmount: 0,
-    interestAmount: 2400,
-    stage: 'Initiation',
-    status: 'DISBURSED',
-    appliedAddons: [
-      { name: 'Initial Interest', amount: 240.00, dateApplied: '2026-04-29', timeApplied: '17:34:50', dateLabel: 'TODAY' },
-      { name: 'Main Interest', amount: 1680.00, dateApplied: '2026-04-29', timeApplied: '17:34:50', dateLabel: 'TODAY' },
-      { name: 'Registration Fees', amount: 500.00, dateApplied: '2026-04-29', timeApplied: '17:34:50', dateLabel: 'TODAY' }
-    ],
-    notAppliedAddons: [
-      { name: 'Late Interest', amount: 1.00, status: 'Not Added' },
-      { name: 'Block Addon', amount: 24.00, status: 'Not Added' },
-      { name: 'Initial Interest', amount: 3.00, status: 'Added' },
-      { name: 'Main Interest', amount: 21.00, status: 'Added' },
-      { name: 'Registration Fees', amount: 500.00, status: 'Added' }
-    ]
-  },
-  {
-    id: 3003,
-    mpesaCode: '',
-    customerName: 'Mercy Wambui',
-    customerAccount: 'ACC-89012',
-    phone: '254711987654',
-    principal: 15000,
-    addOns: 1200,
-    deductions: 950,
-    disbursedAmount: 15000,
-    repayableAmount: 19650,
-    repaid: 0,
-    balance: 19650,
-    product: 'Emergency Loan',
-    disbursedDate: '15 Apr 2026',
-    disbursedDateLabel: '2 DAYS AGO',
-    disbursedTime: '02:45 PM',
-    dueDate: '25 Apr 2026',
-    daysUntilDue: 6,
-    lastRepayDate: '',
-    clearedDate: '',
-    nextRepayDate: '29 Apr 2026',
-    nextRepayLabel: 'TOMORROW',
-    currentInstalment: 1,
-    currentInstalmentAmount: 4912,
-    currentLO: 'Peter Karanja',
-    currentCO: 'Alice Kamau',
-    currentCollector: '',
-    createdBy: 'Angela Njeri',
-    penaltyAmount: 0,
-    interestAmount: 4650,
-    stage: 'Initiation',
-    status: 'CREATED',
-    appliedAddons: [
-      { name: 'Initial Interest', amount: 240.00, dateApplied: '2026-04-29', timeApplied: '17:34:50', dateLabel: 'TODAY' },
-      { name: 'Main Interest', amount: 1680.00, dateApplied: '2026-04-29', timeApplied: '17:34:50', dateLabel: 'TODAY' },
-      { name: 'Registration Fees', amount: 500.00, dateApplied: '2026-04-29', timeApplied: '17:34:50', dateLabel: 'TODAY' }
-    ],
-    notAppliedAddons: [
-      { name: 'Late Interest', amount: 1.00, status: 'Not Added' },
-      { name: 'Block Addon', amount: 24.00, status: 'Not Added' },
-      { name: 'Initial Interest', amount: 3.00, status: 'Added' },
-      { name: 'Main Interest', amount: 21.00, status: 'Added' },
-      { name: 'Registration Fees', amount: 500.00, status: 'Added' }
-    ],
-    appliedDeductions: [],
-    paySchedule: [
-      { date: '2026-04-30', amount: 348.00, balance: 0.00, status: 'Repaid' },
-      { date: '2026-05-01', amount: 348.00, balance: 0.00, status: 'Repaid' },
-      { date: '2026-05-02', amount: 348.00, balance: 348.00, status: 'Unpaid' },
-      { date: '2026-05-03', amount: 348.00, balance: 696.00, status: 'Unpaid' },
-      { date: '2026-05-04', amount: 348.00, balance: 1044.00, status: 'Unpaid' },
-      { date: '2026-05-05', amount: 348.00, balance: 1392.00, status: 'Unpaid' },
-      { date: '2026-05-06', amount: 348.00, balance: 1740.00, status: 'Unpaid' },
-      { date: '2026-05-07', amount: 348.00, balance: 2088.00, status: 'Unpaid' },
-      { date: '2026-05-08', amount: 348.00, balance: 2436.00, status: 'Unpaid' },
-      { date: '2026-05-09', amount: 348.00, balance: 2784.00, status: 'Unpaid' },
-      { date: '2026-05-10', amount: 348.00, balance: 3132.00, status: 'Unpaid' },
-      { date: '2026-05-11', amount: 348.00, balance: 3480.00, status: 'Unpaid' },
-      { date: '2026-05-12', amount: 348.00, balance: 3828.00, status: 'Unpaid' },
-      { date: '2026-05-13', amount: 348.00, balance: 4176.00, status: 'Unpaid' },
-      { date: '2026-05-14', amount: 348.00, balance: 4524.00, status: 'Unpaid' }
-    ],
-    loanCollateral: [
-      { name: 'Gas', type: '', status: 'Not Used' },
-      { name: 'Sofa set', type: '', status: 'Not Used' },
-      { name: 'Woofer', type: '', status: 'Not Used' },
-      { name: 'Television', type: '', status: 'Not Used' }
-    ],
-    repayments: [
-      { id: 1437842, transactionCode: 'UDT822HDSK', amount: 740.00, dateRepaid: '2026-04-29', dateLabel: 'TODAY', payerName: 'Faridah Anyanga Wesonga', payerPhone: '254795056307', paymentMethod: 'Mobile Payment', status: 'Added' }
-    ]
-  },
-  {
-    id: 3004,
-    mpesaCode: '',
-    customerName: 'David Mutua',
-    customerAccount: 'ACC-45098',
-    phone: '254798112233',
-    principal: 9000,
-    addOns: 600,
-    deductions: 500,
-    disbursedAmount: 9000,
-    repayableAmount: 11800,
-    repaid: 3500,
-    balance: 8300,
-    product: 'Personal Loan',
-    disbursedDate: '13 Apr 2026',
-    disbursedDateLabel: '3 DAYS AGO',
-    disbursedTime: '11:10 AM',
-    dueDate: '22 Apr 2026',
-    daysUntilDue: 3,
-    lastRepayDate: '',
-    clearedDate: '',
-    nextRepayDate: '29 Apr 2026',
-    nextRepayLabel: 'TOMORROW',
-    currentInstalment: 2,
-    currentInstalmentAmount: 2950,
-    currentLO: 'Sarah Wairimu',
-    currentCO: 'Samuel Ouma',
-    currentCollector: '',
-    createdBy: 'Brian Mutiso',
-    penaltyAmount: 0,
-    interestAmount: 2800,
-    stage: 'Initiation',
-    status: 'CREATED',
-    appliedAddons: [
-      { name: 'Initial Interest', amount: 240.00, dateApplied: '2026-04-29', timeApplied: '17:34:50', dateLabel: 'TODAY' },
-      { name: 'Main Interest', amount: 1680.00, dateApplied: '2026-04-29', timeApplied: '17:34:50', dateLabel: 'TODAY' },
-      { name: 'Registration Fees', amount: 500.00, dateApplied: '2026-04-29', timeApplied: '17:34:50', dateLabel: 'TODAY' }
-    ],
-    notAppliedAddons: [
-      { name: 'Late Interest', amount: 1.00, status: 'Not Added' },
-      { name: 'Block Addon', amount: 24.00, status: 'Not Added' },
-      { name: 'Initial Interest', amount: 3.00, status: 'Added' },
-      { name: 'Main Interest', amount: 21.00, status: 'Added' },
-      { name: 'Registration Fees', amount: 500.00, status: 'Added' }
-    ],
-    appliedDeductions: [],
-    paySchedule: [
-      { date: '2026-04-30', amount: 348.00, balance: 0.00, status: 'Repaid' },
-      { date: '2026-05-01', amount: 348.00, balance: 0.00, status: 'Repaid' },
-      { date: '2026-05-02', amount: 348.00, balance: 348.00, status: 'Unpaid' },
-      { date: '2026-05-03', amount: 348.00, balance: 696.00, status: 'Unpaid' },
-      { date: '2026-05-04', amount: 348.00, balance: 1044.00, status: 'Unpaid' },
-      { date: '2026-05-05', amount: 348.00, balance: 1392.00, status: 'Unpaid' },
-      { date: '2026-05-06', amount: 348.00, balance: 1740.00, status: 'Unpaid' },
-      { date: '2026-05-07', amount: 348.00, balance: 2088.00, status: 'Unpaid' },
-      { date: '2026-05-08', amount: 348.00, balance: 2436.00, status: 'Unpaid' },
-      { date: '2026-05-09', amount: 348.00, balance: 2784.00, status: 'Unpaid' },
-      { date: '2026-05-10', amount: 348.00, balance: 3132.00, status: 'Unpaid' },
-      { date: '2026-05-11', amount: 348.00, balance: 3480.00, status: 'Unpaid' },
-      { date: '2026-05-12', amount: 348.00, balance: 3828.00, status: 'Unpaid' },
-      { date: '2026-05-13', amount: 348.00, balance: 4176.00, status: 'Unpaid' },
-      { date: '2026-05-14', amount: 348.00, balance: 4524.00, status: 'Unpaid' }
-    ],
-    loanCollateral: [
-      { name: 'Gas', type: '', status: 'Not Used' },
-      { name: 'Sofa set', type: '', status: 'Not Used' },
-      { name: 'Woofer', type: '', status: 'Not Used' },
-      { name: 'Television', type: '', status: 'Not Used' }
-    ],
-    repayments: [
-      { id: 1437842, transactionCode: 'UDT822HDSK', amount: 740.00, dateRepaid: '2026-04-29', dateLabel: 'TODAY', payerName: 'Faridah Anyanga Wesonga', payerPhone: '254795056307', paymentMethod: 'Mobile Payment', status: 'Added' }
-    ]
-  },
-  {
-    id: 3005,
-    mpesaCode: '',
-    customerName: 'Esther Ndegwa',
-    customerAccount: 'ACC-32087',
-    phone: '254713667788',
-    principal: 7000,
-    addOns: 400,
-    deductions: 300,
-    disbursedAmount: 7000,
-    repayableAmount: 9100,
-    repaid: 2000,
-    balance: 7100,
-    product: 'Personal Loan',
-    disbursedDate: '14 Apr 2026',
-    disbursedDateLabel: '3 DAYS AGO',
-    disbursedTime: '09:00 AM',
-    dueDate: '12 May 2026',
-    daysUntilDue: 23,
-    lastRepayDate: '',
-    clearedDate: '',
-    nextRepayDate: '29 Apr 2026',
-    nextRepayLabel: 'TOMORROW',
-    currentInstalment: 1,
-    currentInstalmentAmount: 2275,
-    currentLO: 'Angela Njeri',
-    currentCO: 'Brian Mutiso',
-    currentCollector: '',
-    createdBy: 'Grace Wanjiru',
-    penaltyAmount: 0,
-    interestAmount: 2100,
-    stage: 'Initiation',
-    status: 'DISBURSED',
-    appliedAddons: [
-      { name: 'Initial Interest', amount: 240.00, dateApplied: '2026-04-29', timeApplied: '17:34:50', dateLabel: 'TODAY' },
-      { name: 'Main Interest', amount: 1680.00, dateApplied: '2026-04-29', timeApplied: '17:34:50', dateLabel: 'TODAY' },
-      { name: 'Registration Fees', amount: 500.00, dateApplied: '2026-04-29', timeApplied: '17:34:50', dateLabel: 'TODAY' }
-    ],
-    notAppliedAddons: [
-      { name: 'Late Interest', amount: 1.00, status: 'Not Added' },
-      { name: 'Block Addon', amount: 24.00, status: 'Not Added' },
-      { name: 'Initial Interest', amount: 3.00, status: 'Added' },
-      { name: 'Main Interest', amount: 21.00, status: 'Added' },
-      { name: 'Registration Fees', amount: 500.00, status: 'Added' }
-    ],
-    appliedDeductions: [],
-    paySchedule: [
-      { date: '2026-04-30', amount: 348.00, balance: 0.00, status: 'Repaid' },
-      { date: '2026-05-01', amount: 348.00, balance: 0.00, status: 'Repaid' },
-      { date: '2026-05-02', amount: 348.00, balance: 348.00, status: 'Unpaid' },
-      { date: '2026-05-03', amount: 348.00, balance: 696.00, status: 'Unpaid' },
-      { date: '2026-05-04', amount: 348.00, balance: 1044.00, status: 'Unpaid' },
-      { date: '2026-05-05', amount: 348.00, balance: 1392.00, status: 'Unpaid' },
-      { date: '2026-05-06', amount: 348.00, balance: 1740.00, status: 'Unpaid' },
-      { date: '2026-05-07', amount: 348.00, balance: 2088.00, status: 'Unpaid' },
-      { date: '2026-05-08', amount: 348.00, balance: 2436.00, status: 'Unpaid' },
-      { date: '2026-05-09', amount: 348.00, balance: 2784.00, status: 'Unpaid' },
-      { date: '2026-05-10', amount: 348.00, balance: 3132.00, status: 'Unpaid' },
-      { date: '2026-05-11', amount: 348.00, balance: 3480.00, status: 'Unpaid' },
-      { date: '2026-05-12', amount: 348.00, balance: 3828.00, status: 'Unpaid' },
-      { date: '2026-05-13', amount: 348.00, balance: 4176.00, status: 'Unpaid' },
-      { date: '2026-05-14', amount: 348.00, balance: 4524.00, status: 'Unpaid' }
-    ],
-    loanCollateral: [
-      { name: 'Gas', type: '', status: 'Not Used' },
-      { name: 'Sofa set', type: '', status: 'Not Used' },
-      { name: 'Woofer', type: '', status: 'Not Used' },
-      { name: 'Television', type: '', status: 'Not Used' }
-    ],
-    repayments: [
-      { id: 1437842, transactionCode: 'UDT822HDSK', amount: 740.00, dateRepaid: '2026-04-29', dateLabel: 'TODAY', payerName: 'Faridah Anyanga Wesonga', payerPhone: '254795056307', paymentMethod: 'Mobile Payment', status: 'Added' }
-    ]
-  }
-]
-
-const loanId = computed(() => Number(route.params.id))
-const loan = computed(() => mockLoans.find(l => l.id === loanId.value))
+const loanId = computed(() => route.params.id as string)
+const loan = ref<Loan | null>(null)
+const isLoading = ref(true)
 
 const activeTab = ref('loan-info')
 const goToLoanId = ref('')
+
+// Action states
+const isApproving = ref(false)
+const isRejecting = ref(false)
+const isDisbursing = ref(false)
+
+// Disburse Modal State
+const showDisburseModal = ref(false)
+const disburseForm = ref({
+  mpesaCode: '',
+  disbursedAt: new Date().toISOString().slice(0, 16)
+})
 
 const tabs = [
   { key: 'loan-info', label: 'Loan Info', icon: Info },
@@ -476,802 +53,438 @@ const tabs = [
   { key: 'events', label: 'Events', icon: Clock }
 ]
 
-const formatCurrency = (value: number) => {
-  return `Ksh ${value.toLocaleString('en-US')}`
-}
-
-const navigatePrev = () => {
-  const currentIndex = mockLoans.findIndex(l => l.id === loanId.value)
-  if (currentIndex > 0) {
-    router.push(`/loans/${mockLoans[currentIndex - 1].id}`)
+const fetchLoan = async () => {
+  try {
+    isLoading.value = true
+    loan.value = await getLoanById(loanId.value)
+  } catch (error) {
+    console.error('Error fetching loan:', error)
+    alert('Failed to load loan details.')
+  } finally {
+    isLoading.value = false
   }
 }
 
-const navigateNext = () => {
-  const currentIndex = mockLoans.findIndex(l => l.id === loanId.value)
-  if (currentIndex < mockLoans.length - 1) {
-    router.push(`/loans/${mockLoans[currentIndex + 1].id}`)
-  }
+onMounted(() => {
+  fetchLoan()
+})
+
+const formatCurrency = (value: number | undefined) => {
+  if (value === undefined || value === null) return 'Ksh 0.00'
+  return `Ksh ${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+const formatDate = (isoString: string | null | undefined) => {
+  if (!isoString) return 'N/A'
+  const d = new Date(isoString)
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 const goToLoan = () => {
-  const targetId = parseInt(goToLoanId.value)
-  if (targetId && mockLoans.some(l => l.id === targetId)) {
-    router.push(`/loans/${targetId}`)
+  if (goToLoanId.value) {
+    router.push(`/loans/${goToLoanId.value}`)
   }
 }
 
-const handleApprove = () => {
-  console.log('approve')
+// Actions
+const handleApprove = async () => {
+  if (!confirm('Are you sure you want to approve this loan?')) return
+  try {
+    isApproving.value = true
+    await approveLoan(loanId.value)
+    await fetchLoan()
+  } catch (e) {
+    console.error(e)
+    alert('Approval failed.')
+  } finally {
+    isApproving.value = false
+  }
 }
 
-const handleReject = () => {
-  console.log('reject')
+const handleReject = async () => {
+  if (!confirm('Are you sure you want to reject this loan?')) return
+  try {
+    isRejecting.value = true
+    await rejectLoan(loanId.value)
+    await fetchLoan()
+  } catch (e) {
+    console.error(e)
+    alert('Rejection failed.')
+  } finally {
+    isRejecting.value = false
+  }
 }
 
-const handleFlag = () => {
-  console.log('flag')
+const handleDisburse = async () => {
+  try {
+    isDisbursing.value = true
+    await disburseLoan(loanId.value, {
+      mpesaCode: disburseForm.value.mpesaCode,
+      disbursedAt: new Date(disburseForm.value.disbursedAt).toISOString()
+    })
+    showDisburseModal.value = false
+    await fetchLoan()
+  } catch (e) {
+    console.error(e)
+    alert('Disbursement failed.')
+  } finally {
+    isDisbursing.value = false
+  }
 }
 
-const appliedAddonsTotal = computed(() => {
-  if (!loan.value) return 0
-  return loan.value.appliedAddons.reduce((sum, addon) => sum + addon.amount, 0)
-})
-
-const handleAddAddon = (name: string) => {
-  console.log('add', name)
-}
-
-const handleRemoveAddon = (name: string) => {
-  console.log('remove', name)
-}
 </script>
 
 <template>
-  <div v-if="loan" class="min-h-screen bg-white">
-    <!-- Page Header -->
-    <div class="flex items-center justify-between px-6 py-4 border-b border-[#E5E0EA]">
-      <div class="flex items-center">
-        <h1 class="text-2xl font-bold text-[#1A1A2E]">Loan Details</h1>
-        <span class="text-sm text-[#9CA3AF] ml-2">Loan #{{ loan.id }}</span>
-      </div>
-      <div class="flex gap-2 items-center">
-        <button
-          type="button"
-          @click="navigatePrev"
-          class="bg-white border border-[#E5E0EA] text-[#4B4B6B] hover:border-[#4F1964] px-3 py-1.5 rounded-md text-sm"
-        >
-          « Prev
-        </button>
-        <button
-          type="button"
-          @click="navigateNext"
-          class="bg-white border border-[#E5E0EA] text-[#4B4B6B] hover:border-[#4F1964] px-3 py-1.5 rounded-md text-sm"
-        >
-          » Next
-        </button>
-        <button
-          type="button"
-          @click="router.push('/loans/all')"
-          class="bg-white border border-[#E5E0EA] text-[#4B4B6B] hover:border-[#4F1964] px-3 py-1.5 rounded-md text-sm"
-        >
-          » All
-        </button>
-        <input
-          v-model="goToLoanId"
-          type="text"
-          placeholder="Go to another loan #id"
-          class="border border-[#E5E0EA] rounded-md px-3 py-1.5 text-sm w-48"
-          @keyup.enter="goToLoan"
-        />
-        <button
-          type="button"
-          @click="goToLoan"
-          class="bg-[#4F1964] text-white px-3 py-1.5 rounded-md"
-        >
-          <ArrowRight class="w-4 h-4" />
-        </button>
-      </div>
+  <div class="min-h-screen bg-white pb-10">
+    <div v-if="isLoading" class="flex flex-col items-center justify-center pt-32">
+      <Loader2 class="w-8 h-8 animate-spin text-[#4F1964]" />
+      <span class="mt-4 text-[#4B4B6B]">Loading loan details...</span>
     </div>
 
-    <!-- Tabs -->
-    <div class="flex border-b border-[#E5E0EA] px-6">
-      <button
-        v-for="tab in tabs"
-        :key="tab.key"
-        type="button"
-        @click="activeTab = tab.key"
-        class="flex items-center gap-2 px-4 py-3 text-sm border-b-2 transition-colors"
-        :class="activeTab === tab.key 
-          ? 'border-[#4F1964] text-[#4F1964] font-semibold' 
-          : 'border-transparent text-[#4B4B6B] hover:text-[#4F1964]'"
-      >
-        <component :is="tab.icon" class="w-4 h-4" />
-        {{ tab.label }}
-      </button>
-    </div>
-
-    <!-- Tab Content -->
-    <div class="p-6">
-      <!-- Loan Info Tab -->
-      <div v-if="activeTab === 'loan-info'" class="flex gap-6 p-6 items-start">
-        <!-- Left: Icon + Definition Table -->
-        <div class="flex-1">
-          <div class="flex gap-6">
-            <!-- Icon Placeholder -->
-            <div class="w-20 h-20 bg-[#F3F4F6] rounded-lg flex items-center justify-center shrink-0">
-              <Info class="w-10 h-10 text-[#9CA3AF]" />
-            </div>
-
-            <!-- Definition Table -->
-            <div class="flex-1">
-              <!-- CODE -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-white rounded">
-                <span class="w-56 shrink-0 text-sm text-[#4B4B6B]">CODE</span>
-                <span class="flex-1 text-sm text-[#1A1A2E] font-mono font-medium">{{ loan.id }}</span>
-              </div>
-
-              <!-- Mpesa Code -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-[#F8F7FA] rounded">
-                <span class="w-56 shrink-0 text-sm text-[#4B4B6B]">Mpesa Code</span>
-                <span class="flex-1 text-sm text-[#1A1A2E] font-medium"></span>
-              </div>
-
-              <!-- Customer -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-white rounded">
-                <span class="w-56 shrink-0 text-sm text-[#4B4B6B]">Customer</span>
-                <div class="flex-1">
-                  <div class="flex items-center gap-1 text-sm text-[#1A1A2E] font-medium">
-                    {{ loan.customerName }}
-                    <ExternalLink class="w-3 h-3 text-[#6B2385]" />
-                  </div>
-                  <div class="text-xs text-[#9CA3AF]">{{ loan.customerAccount }}</div>
-                </div>
-              </div>
-
-              <!-- Mobile -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-[#F8F7FA] rounded">
-                <span class="w-56 shrink-0 text-sm text-[#4B4B6B]">Mobile</span>
-                <div class="flex-1">
-                  <span class="text-sm text-[#4F1964] underline">{{ loan.phone }}</span>
-                  <span class="text-[#9CA3AF]"> (Mpesa)</span>
-                </div>
-              </div>
-
-              <!-- Principal -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-white rounded">
-                <span class="w-56 shrink-0 text-sm text-[#4B4B6B]">Principal</span>
-                <span class="flex-1 text-sm text-[#1A1A2E] font-bold text-base">{{ formatCurrency(loan.principal) }}</span>
-              </div>
-
-              <!-- AddOns -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-[#F8F7FA] rounded">
-                <span class="w-56 shrink-0 text-sm text-[#4B4B6B]">AddOns</span>
-                <span class="flex-1 text-sm text-[#1A1A2E] font-medium">{{ formatCurrency(loan.addOns) }}</span>
-              </div>
-
-              <!-- Deductions -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-white rounded">
-                <span class="w-56 shrink-0 text-sm text-[#4B4B6B]">Deductions</span>
-                <span class="flex-1 text-sm text-[#1A1A2E] font-medium">{{ formatCurrency(loan.deductions) }}</span>
-              </div>
-
-              <!-- Disbursed Amount -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-[#F8F7FA] rounded">
-                <span class="w-56 shrink-0 text-sm text-[#4B4B6B]">Disbursed Amount</span>
-                <span class="flex-1 text-sm text-[#1A1A2E] font-medium">{{ formatCurrency(loan.disbursedAmount) }}</span>
-              </div>
-
-              <!-- Repayable Amount -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-white rounded">
-                <span class="w-56 shrink-0 text-sm text-[#4B4B6B]">Repayable Amount</span>
-                <span class="flex-1 text-sm text-[#1A1A2E] font-medium">{{ formatCurrency(loan.repayableAmount) }}</span>
-              </div>
-
-              <!-- Repaid -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-[#F8F7FA] rounded">
-                <span class="w-56 shrink-0 text-sm text-[#4B4B6B]">Repaid.</span>
-                <span class="flex-1 text-sm text-[#166534] font-medium">{{ formatCurrency(loan.repaid) }}</span>
-              </div>
-
-              <!-- Balance -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-white rounded">
-                <span class="w-56 shrink-0 text-sm text-[#4B4B6B]">Balance</span>
-                <span class="flex-1 text-sm text-[#E8604A] font-bold text-base">{{ formatCurrency(loan.balance) }}</span>
-              </div>
-
-              <!-- Product -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-[#F8F7FA] rounded">
-                <span class="w-56 shrink-0 text-sm text-[#4B4B6B]">Product</span>
-                <span class="flex-1 text-sm text-[#1A1A2E] font-medium">{{ loan.product }}</span>
-              </div>
-
-              <!-- Disbursed Date -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-white rounded">
-                <span class="w-56 shrink-0 text-sm text-[#4B4B6B]">Disbursed Date</span>
-                <div class="flex-1 flex items-center gap-2">
-                  <span class="text-sm text-[#1A1A2E] font-medium">{{ loan.disbursedDate }}</span>
-                  <span class="bg-[#6B2385] text-white text-[10px] px-2 py-0.5 rounded-sm font-bold">{{ loan.disbursedDateLabel }}</span>
-                  <span class="text-xs text-[#6B2385]">{{ loan.disbursedTime }}</span>
-                </div>
-              </div>
-
-              <!-- Due Date -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-[#F8F7FA] rounded">
-                <span class="w-56 shrink-0 text-sm text-[#4B4B6B]">Due Date</span>
-                <div class="flex-1 flex items-center gap-2">
-                  <span class="text-sm text-[#1A1A2E] font-medium">{{ loan.dueDate }}</span>
-                  <span 
-                    class="px-2 py-0.5 rounded-sm text-white text-[10px] font-bold"
-                    :class="loan.daysUntilDue < 0 ? 'bg-[#E8604A]' : 'bg-[#1A1A2E]'"
-                  >
-                    {{ loan.daysUntilDue < 0 ? 'OVERDUE' : `IN ${loan.daysUntilDue} DAYS` }}
-                  </span>
-                </div>
-              </div>
-
-              <!-- Last Repay Date -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-white rounded">
-                <span class="w-56 shrink-0 text-sm text-[#4B4B6B]">Last Repay Date</span>
-                <span class="flex-1 text-sm text-[#1A1A2E] font-medium"></span>
-              </div>
-
-              <!-- Cleared Date -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-[#F8F7FA] rounded">
-                <span class="w-56 shrink-0 text-sm text-[#4B4B6B]">Cleared Date</span>
-                <span class="flex-1 text-sm text-[#1A1A2E] font-medium"></span>
-              </div>
-
-              <!-- Next Repay Date -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-white rounded">
-                <span class="w-56 shrink-0 text-sm text-[#4B4B6B]">Next Repay Date</span>
-                <div class="flex-1 flex items-center gap-2">
-                  <span class="text-sm text-[#1A1A2E] font-medium">{{ loan.nextRepayDate }}</span>
-                  <span class="bg-[#F9DA82] text-[#1A1A2E] text-[10px] px-2 py-0.5 rounded-sm font-bold">{{ loan.nextRepayLabel }}</span>
-                </div>
-              </div>
-
-              <!-- Current Instalment -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-[#F8F7FA] rounded">
-                <span class="w-56 shrink-0 text-sm text-[#4B4B6B]">Current Instalment</span>
-                <span class="flex-1 text-sm text-[#1A1A2E] font-medium">{{ loan.currentInstalment }}</span>
-              </div>
-
-              <!-- Current Instalment Amount -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-white rounded">
-                <span class="w-56 shrink-0 text-sm text-[#4B4B6B]">Current Instalment Amount</span>
-                <span class="flex-1 text-sm text-[#1A1A2E] font-medium">{{ formatCurrency(loan.currentInstalmentAmount) }}</span>
-              </div>
-
-              <!-- Current LO -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-[#F8F7FA] rounded">
-                <span class="w-56 shrink-0 text-sm text-[#4B4B6B]">Current LO</span>
-                <div class="flex-1 flex items-center gap-2">
-                  <UserCircle class="w-5 h-5 text-[#6B2385]" />
-                  <span class="text-sm text-[#1A1A2E] font-medium">{{ loan.currentLO }}</span>
-                </div>
-              </div>
-
-              <!-- Current CO -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-white rounded">
-                <span class="w-56 shrink-0 text-sm text-[#4B4B6B]">Current CO</span>
-                <div class="flex-1 flex items-center gap-2">
-                  <UserCircle class="w-5 h-5 text-[#6B2385]" />
-                  <span class="text-sm text-[#1A1A2E] font-medium">{{ loan.currentCO }}</span>
-                </div>
-              </div>
-
-              <!-- Current Collector -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-[#F8F7FA] rounded">
-                <span class="w-56 shrink-0 text-sm text-[#4B4B6B]">Current Collector</span>
-                <div class="flex-1 flex items-center gap-2">
-                  <UserCircle class="w-5 h-5 text-[#6B2385]" />
-                  <span class="text-sm text-[#1A1A2E] font-medium">(0)</span>
-                </div>
-              </div>
-
-              <!-- Created By -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-white rounded">
-                <span class="w-56 shrink-0 text-sm text-[#4B4B6B]">Created By</span>
-                <div class="flex-1 flex items-center gap-2">
-                  <UserCircle class="w-5 h-5 text-[#6B2385]" />
-                  <span class="text-sm text-[#1A1A2E] font-medium">{{ loan.createdBy }} (0)</span>
-                </div>
-              </div>
-
-              <!-- PENALTY_AMOUNT -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-[#F3F4F6] rounded">
-                <span class="w-56 shrink-0 text-xs font-bold uppercase text-[#1A1A2E]">PENALTY_AMOUNT</span>
-                <span class="flex-1 text-sm text-[#1A1A2E] font-medium">{{ formatCurrency(loan.penaltyAmount) }}</span>
-              </div>
-
-              <!-- INTEREST_AMOUNT -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-[#F3F4F6] rounded">
-                <span class="w-56 shrink-0 text-xs font-bold uppercase text-[#1A1A2E]">INTEREST_AMOUNT</span>
-                <span class="flex-1 text-sm text-[#1A1A2E] font-medium">{{ formatCurrency(loan.interestAmount) }}</span>
-              </div>
-
-              <!-- Stage -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-white rounded">
-                <span class="w-56 shrink-0 text-sm text-[#4B4B6B]">Stage</span>
-                <span class="flex-1 text-sm text-[#1A1A2E] font-medium">{{ loan.stage }}</span>
-              </div>
-
-              <!-- Status -->
-              <div class="flex border-b border-[#F3F4F6] py-2.5 px-3 bg-[#F8F7FA] rounded">
-                <span class="w-56 shrink-0 text-sm text-[#4B4B6B]">Status</span>
-                <span 
-                  class="px-3 py-0.5 rounded-sm text-white text-[10px] font-bold uppercase"
-                  :class="{
-                    'bg-[#2563EB]': loan.status === 'CREATED',
-                    'bg-[#4F1964]': loan.status === 'DISBURSED',
-                    'bg-[#E8604A]': loan.status === 'DEFAULTED'
-                  }"
-                >
-                  {{ loan.status }}
-                </span>
-              </div>
-
-              <!-- Flag Button -->
-              <button
-                type="button"
-                @click="handleFlag"
-                class="mt-4 bg-[#F9DA82] text-[#1A1A2E] px-4 py-2 rounded-md text-sm font-medium flex items-center gap-1"
-              >
-                <Flag class="w-4 h-4" />
-                Flag
-              </button>
-            </div>
-          </div>
+    <div v-else-if="loan">
+      <!-- Page Header -->
+      <div class="flex items-center justify-between px-6 py-4 border-b border-[#E5E0EA] flex-wrap gap-4">
+        <div class="flex items-center gap-3">
+          <h1 class="text-2xl font-bold text-[#1A1A2E]">Loan Details</h1>
+          <span class="text-sm text-[#9CA3AF] px-2 py-0.5 bg-gray-100 rounded border border-gray-200">{{ loan.code || loan.id.slice(0, 8) }}</span>
+          <span 
+            class="text-xs font-bold px-2 py-0.5 rounded-full uppercase"
+            :class="{
+              'bg-[#F9DA82] text-[#1A1A2E]': loan.status === 'Created' || loan.status === 'Pending',
+              'bg-[#166534] text-white': loan.status === 'Approved' || loan.status === 'Cleared',
+              'bg-[#4F1964] text-white': loan.status === 'Disbursed',
+              'bg-[#E8604A] text-white': loan.status === 'Defaulted' || loan.status === 'Rejected'
+            }"
+          >
+            {{ loan.status }}
+          </span>
         </div>
+        
+        <div class="flex gap-2 items-center flex-wrap">
+          <!-- Action Buttons based on state -->
+          <button
+            v-if="loan.status === 'Created'"
+            @click="handleApprove"
+            :disabled="isApproving"
+            class="inline-flex items-center gap-2 bg-[#166534] hover:bg-[#14532d] text-white px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
+          >
+            <Loader2 v-if="isApproving" class="w-4 h-4 animate-spin" />
+            <CheckCircle v-else class="w-4 h-4" /> Approve
+          </button>
+          
+          <button
+            v-if="loan.status === 'Created'"
+            @click="handleReject"
+            :disabled="isRejecting"
+            class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
+          >
+            <Loader2 v-if="isRejecting" class="w-4 h-4 animate-spin" />
+            <XCircle v-else class="w-4 h-4" /> Reject
+          </button>
+          
+          <button
+            v-if="loan.status === 'Approved'"
+            @click="showDisburseModal = true"
+            class="inline-flex items-center gap-2 bg-[#4F1964] hover:bg-[#380F47] text-white px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
+          >
+            <Send class="w-4 h-4" /> Disburse
+          </button>
 
-        <!-- Right Panel -->
-        <div class="w-80 shrink-0">
-          <!-- Loan Stages -->
-          <div class="border border-[#E5E0EA] rounded-lg p-4 mb-4">
-            <h3 class="text-base font-bold text-[#1A1A2E] mb-4">Loan Stages</h3>
+          <div class="h-6 w-px bg-[#E5E0EA] mx-2"></div>
 
-            <!-- Stage 1 -->
-            <div class="text-center">
-              <div class="flex items-center justify-center">
-                <span class="bg-[#166534] text-white w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold inline mr-2">
-                  1
-                </span>
-                <span class="text-[#166834] font-bold text-sm">Initiation</span>
-                <span class="text-[#9CA3AF] text-xs ml-1">(Current)</span>
-              </div>
-              <div class="flex gap-2 mt-2 justify-center">
-                <button
-                  type="button"
-                  @click="handleApprove"
-                  class="bg-[#166534] hover:bg-[#14532D] text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1"
-                >
-                  <Check class="w-4 h-4" />
-                  Approve
-                </button>
-                <button
-                  type="button"
-                  @click="handleReject"
-                  class="bg-[#E8604A] hover:bg-[#DC2626] text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1"
-                >
-                  <X class="w-4 h-4" />
-                  Reject
-                </button>
-              </div>
-            </div>
-
-            <!-- Divider -->
-            <div class="flex items-center justify-center my-2">
-              <ChevronDown class="w-5 h-5 text-[#9CA3AF]" />
-            </div>
-
-            <!-- Stage 2 -->
-            <div class="text-center">
-              <div class="flex items-center justify-center">
-                <span class="bg-[#9CA3AF] text-white w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold inline mr-2">
-                  2
-                </span>
-                <span class="text-[#9CA3AF] text-sm">Branch Manager Approval</span>
-              </div>
-            </div>
-
-            <!-- Divider -->
-            <div class="flex items-center justify-center my-2">
-              <ChevronDown class="w-5 h-5 text-[#9CA3AF]" />
-            </div>
-
-            <!-- Stage 3 -->
-            <div class="text-center">
-              <div class="flex items-center justify-center">
-                <span class="bg-[#9CA3AF] text-white w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold inline mr-2">
-                  3
-                </span>
-                <span class="text-[#9CA3AF] text-sm">Final Approval</span>
-                <Zap class="w-4 h-4 text-[#F9DA82] inline ml-1" />
-              </div>
-            </div>
-          </div>
-
-          <!-- Action Buttons -->
-          <div class="flex flex-col gap-3">
-            <button
-              type="button"
-              class="bg-[#F9DA82] hover:bg-[#F0C84A] text-[#1A1A2E] w-full py-2.5 rounded-md text-sm font-medium flex items-center justify-center gap-2"
-            >
-              <MessageSquare class="w-4 h-4" />
-              Interactions
-            </button>
-            <button
-              type="button"
-              class="bg-[#6B2385] hover:bg-[#4F1964] text-white w-full py-2.5 rounded-md text-sm font-medium flex items-center justify-center gap-2"
-            >
-              <Plus class="w-4 h-4" />
-              Add NPL Tag
-            </button>
-          </div>
+          <button
+            type="button"
+            @click="router.push('/loans/all')"
+            class="bg-white border border-[#E5E0EA] text-[#4B4B6B] hover:border-[#4F1964] px-3 py-1.5 rounded-md text-sm transition-colors"
+          >
+            « Back to List
+          </button>
+          <input
+            v-model="goToLoanId"
+            type="text"
+            placeholder="Go to Loan ID"
+            class="border border-[#E5E0EA] rounded-md px-3 py-1.5 text-sm w-48 outline-none focus:border-[#4F1964] focus:ring-1 focus:ring-[#4F1964]"
+            @keyup.enter="goToLoan"
+          />
+          <button
+            type="button"
+            @click="goToLoan"
+            class="bg-[#4F1964] text-white px-3 py-1.5 rounded-md hover:bg-[#380F47] transition-colors"
+          >
+            <ArrowRight class="w-4 h-4" />
+          </button>
         </div>
       </div>
 
-      <!-- AddOns Tab -->
-      <div v-else-if="activeTab === 'addons'" class="flex gap-6 p-6 items-start">
-        <!-- Left: Icon Placeholder -->
-        <div class="w-20 h-20 bg-[#F3F4F6] rounded-lg flex items-center justify-center shrink-0">
-          <PlusCircle class="w-10 h-10 text-[#9CA3AF]" />
+      <!-- Tabs -->
+      <div class="flex border-b border-[#E5E0EA] px-6 overflow-x-auto">
+        <button
+          v-for="tab in tabs"
+          :key="tab.key"
+          type="button"
+          @click="activeTab = tab.key"
+          class="flex items-center gap-2 px-4 py-3 text-sm border-b-2 transition-colors whitespace-nowrap"
+          :class="activeTab === tab.key 
+            ? 'border-[#4F1964] text-[#4F1964] font-semibold' 
+            : 'border-transparent text-[#4B4B6B] hover:text-[#4F1964]'"
+        >
+          <component :is="tab.icon" class="w-4 h-4" />
+          {{ tab.label }}
+        </button>
+      </div>
+
+      <!-- Tab Content -->
+      <div class="p-6 max-w-5xl">
+        <!-- Loan Info Tab -->
+        <div v-if="activeTab === 'loan-info'" class="flex flex-col md:flex-row gap-6 items-start">
+          <div class="w-20 h-20 bg-[#F3F4F6] rounded-lg flex items-center justify-center shrink-0 hidden md:flex">
+            <Info class="w-10 h-10 text-[#9CA3AF]" />
+          </div>
+
+          <div class="flex-1 w-full border border-[#F3F4F6] rounded-lg overflow-hidden">
+            <!-- Table Rows -->
+            <div class="flex flex-col sm:flex-row border-b border-[#F3F4F6] py-2.5 px-4 bg-white">
+              <span class="w-full sm:w-56 shrink-0 text-sm text-[#4B4B6B]">ID</span>
+              <span class="flex-1 text-sm text-[#1A1A2E] font-mono font-medium">{{ loan.id }}</span>
+            </div>
+
+            <div class="flex flex-col sm:flex-row border-b border-[#F3F4F6] py-2.5 px-4 bg-[#F8F7FA]">
+              <span class="w-full sm:w-56 shrink-0 text-sm text-[#4B4B6B]">Customer</span>
+              <div class="flex-1 flex items-center gap-1 text-sm text-[#1A1A2E] font-medium">
+                {{ loan.customerName }}
+                <ExternalLink class="w-3 h-3 text-[#6B2385] cursor-pointer" @click="router.push(`/customers/${loan.customerId}`)" />
+              </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row border-b border-[#F3F4F6] py-2.5 px-4 bg-white">
+              <span class="w-full sm:w-56 shrink-0 text-sm text-[#4B4B6B]">Product</span>
+              <span class="flex-1 text-sm text-[#1A1A2E] font-medium">{{ loan.product?.name || 'N/A' }}</span>
+            </div>
+
+            <div class="flex flex-col sm:flex-row border-b border-[#F3F4F6] py-2.5 px-4 bg-[#F8F7FA]">
+              <span class="w-full sm:w-56 shrink-0 text-sm text-[#4B4B6B]">Stage</span>
+              <span class="flex-1 text-sm text-[#1A1A2E] font-medium">{{ loan.stage }}</span>
+            </div>
+
+            <div class="flex flex-col sm:flex-row border-b border-[#F3F4F6] py-2.5 px-4 bg-white">
+              <span class="w-full sm:w-56 shrink-0 text-sm text-[#4B4B6B]">Type</span>
+              <span class="flex-1 text-sm text-[#1A1A2E] font-medium">{{ loan.type }}</span>
+            </div>
+
+            <!-- Financials -->
+            <div class="flex flex-col sm:flex-row border-b border-[#F3F4F6] py-2.5 px-4 bg-[#F8F7FA]">
+              <span class="w-full sm:w-56 shrink-0 text-sm text-[#4B4B6B]">Principal</span>
+              <span class="flex-1 text-base text-[#1A1A2E] font-bold">{{ formatCurrency(loan.principal) }}</span>
+            </div>
+
+            <div class="flex flex-col sm:flex-row border-b border-[#F3F4F6] py-2.5 px-4 bg-white">
+              <span class="w-full sm:w-56 shrink-0 text-sm text-[#4B4B6B]">Interest Amount</span>
+              <span class="flex-1 text-sm text-[#1A1A2E] font-medium">{{ formatCurrency(loan.interestAmount) }}</span>
+            </div>
+
+            <div class="flex flex-col sm:flex-row border-b border-[#F3F4F6] py-2.5 px-4 bg-[#F8F7FA]">
+              <span class="w-full sm:w-56 shrink-0 text-sm text-[#4B4B6B]">AddOns Total</span>
+              <span class="flex-1 text-sm text-[#1A1A2E] font-medium">{{ formatCurrency(loan.addOnsTotal) }}</span>
+            </div>
+
+            <div class="flex flex-col sm:flex-row border-b border-[#F3F4F6] py-2.5 px-4 bg-white">
+              <span class="w-full sm:w-56 shrink-0 text-sm text-[#4B4B6B]">Deductions Total</span>
+              <span class="flex-1 text-sm text-[#1A1A2E] font-medium">{{ formatCurrency(loan.deductionsTotal) }}</span>
+            </div>
+
+            <div class="flex flex-col sm:flex-row border-b border-[#F3F4F6] py-2.5 px-4 bg-[#F8F7FA]">
+              <span class="w-full sm:w-56 shrink-0 text-sm text-[#4B4B6B]">Penalty Amount</span>
+              <span class="flex-1 text-sm text-[#1A1A2E] font-medium">{{ formatCurrency(loan.penaltyAmount) }}</span>
+            </div>
+
+            <div class="flex flex-col sm:flex-row border-b border-[#F3F4F6] py-2.5 px-4 bg-[#E5E0EA]">
+              <span class="w-full sm:w-56 shrink-0 text-sm font-bold text-[#1A1A2E] uppercase">Repayable Total</span>
+              <span class="flex-1 text-base text-[#1A1A2E] font-bold">{{ formatCurrency(loan.repayableTotal) }}</span>
+            </div>
+
+            <div class="flex flex-col sm:flex-row border-b border-[#F3F4F6] py-2.5 px-4 bg-white">
+              <span class="w-full sm:w-56 shrink-0 text-sm text-[#4B4B6B]">Repaid Total</span>
+              <span class="flex-1 text-sm text-[#166534] font-medium">{{ formatCurrency(loan.repaidTotal) }}</span>
+            </div>
+
+            <div class="flex flex-col sm:flex-row border-b border-[#F3F4F6] py-2.5 px-4 bg-[#FDF2F2]">
+              <span class="w-full sm:w-56 shrink-0 text-sm font-bold text-[#E8604A] uppercase">Balance</span>
+              <span class="flex-1 text-base text-[#E8604A] font-bold">{{ formatCurrency(loan.balance) }}</span>
+            </div>
+
+            <!-- Dates -->
+            <div class="flex flex-col sm:flex-row border-b border-[#F3F4F6] py-2.5 px-4 bg-white">
+              <span class="w-full sm:w-56 shrink-0 text-sm text-[#4B4B6B]">Created At</span>
+              <span class="flex-1 text-sm text-[#1A1A2E] font-medium">{{ formatDate(loan.createdAt) }}</span>
+            </div>
+
+            <div class="flex flex-col sm:flex-row border-b border-[#F3F4F6] py-2.5 px-4 bg-[#F8F7FA]">
+              <span class="w-full sm:w-56 shrink-0 text-sm text-[#4B4B6B]">Disbursed At</span>
+              <span class="flex-1 text-sm text-[#1A1A2E] font-medium">{{ formatDate(loan.disbursedAt) }}</span>
+            </div>
+
+            <div class="flex flex-col sm:flex-row border-b border-[#F3F4F6] py-2.5 px-4 bg-white">
+              <span class="w-full sm:w-56 shrink-0 text-sm text-[#4B4B6B]">Due Date</span>
+              <span class="flex-1 text-sm text-[#1A1A2E] font-medium">{{ formatDate(loan.dueDate) }}</span>
+            </div>
+            
+            <div class="flex flex-col sm:flex-row border-b border-[#F3F4F6] py-2.5 px-4 bg-[#F8F7FA]">
+              <span class="w-full sm:w-56 shrink-0 text-sm text-[#4B4B6B]">Mpesa Code</span>
+              <span class="flex-1 text-sm text-[#1A1A2E] font-medium">{{ loan.mpesaCode || '-' }}</span>
+            </div>
+
+          </div>
         </div>
 
-        <!-- Right: Content -->
-        <div class="flex-1">
-          <!-- Section 1: APPLIED -->
-          <div>
-            <h3 class="text-sm font-bold text-[#1A1A2E] uppercase tracking-wider mb-3">APPLIED</h3>
-            <table class="w-full">
-              <thead>
+        <!-- AddOns Tab -->
+        <div v-else-if="activeTab === 'addons'" class="space-y-4">
+          <div v-if="loan.addons && loan.addons.length > 0" class="overflow-x-auto rounded-lg border border-[#E5E0EA]">
+            <table class="min-w-full text-sm">
+              <thead class="bg-[#F8F7FA]">
                 <tr>
-                  <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 border-b border-[#E5E0EA]">Name</th>
-                  <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 border-b border-[#E5E0EA]">Amount</th>
-                  <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 border-b border-[#E5E0EA]">Date Applied</th>
-                  <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 border-b border-[#E5E0EA]">Action</th>
+                  <th class="px-4 py-3 text-left font-semibold text-[#4B4B6B]">Name</th>
+                  <th class="px-4 py-3 text-left font-semibold text-[#4B4B6B]">Amount</th>
+                  <th class="px-4 py-3 text-left font-semibold text-[#4B4B6B]">Applied</th>
+                  <th class="px-4 py-3 text-left font-semibold text-[#4B4B6B]">Applied At</th>
                 </tr>
               </thead>
               <tbody>
-                <tr
-                  v-for="(addon, index) in loan.appliedAddons"
-                  :key="index"
-                  class="border-b border-[#F3F4F6] py-3"
-                  :class="index % 2 === 0 ? 'bg-white' : 'bg-[#F8F7FA]'"
-                >
-                  <td class="text-sm text-[#1A1A2E] py-3">{{ addon.name }}</td>
-                  <td class="text-sm text-[#1A1A2E] font-medium py-3">{{ formatCurrency(addon.amount) }}</td>
-                  <td class="py-3">
-                    <div class="flex items-center gap-2">
-                      <span class="text-xs text-[#4B4B6B]">{{ addon.dateApplied }} {{ addon.timeApplied }}</span>
-                      <span
-                        v-if="addon.dateLabel === 'TODAY'"
-                        class="bg-[#6B2385] text-white text-[10px] font-bold px-2 py-0.5 rounded-full"
-                      >
-                        {{ addon.dateLabel }}
-                      </span>
-                      <span
-                        v-else-if="addon.dateLabel === 'YESTERDAY'"
-                        class="bg-gradient-to-r from-[#4F1964] to-[#6B2385] text-white text-[10px] font-bold px-2 py-0.5 rounded-full"
-                      >
-                        {{ addon.dateLabel }}
-                      </span>
-                    </div>
+                <tr v-for="addon in loan.addons" :key="addon.id" class="border-t border-[#E5E0EA] bg-white">
+                  <td class="px-4 py-3 font-medium text-[#1A1A2E]">{{ addon.name }}</td>
+                  <td class="px-4 py-3 text-[#1A1A2E]">{{ formatCurrency(addon.amount) }}</td>
+                  <td class="px-4 py-3">
+                    <span v-if="addon.isApplied" class="px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs font-bold">Yes</span>
+                    <span v-else class="px-2 py-0.5 rounded bg-gray-100 text-gray-800 text-xs font-bold">No</span>
                   </td>
-                  <td class="py-3">
-                    <button type="button" class="text-[#F9DA82] hover:text-[#F0C84A] cursor-pointer">
-                      <Edit2 class="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            <div class="mt-3">
-              <span class="text-sm text-[#4B4B6B]">Total: </span>
-              <span class="text-sm font-bold text-[#1A1A2E]">{{ formatCurrency(appliedAddonsTotal) }}</span>
-            </div>
-          </div>
-
-          <!-- Section 2: NOT APPLIED -->
-          <div class="mt-8">
-            <h3 class="text-sm font-bold text-[#1A1A2E] uppercase tracking-wider mb-1">NOT APPLIED</h3>
-            <div class="flex items-center gap-1 mb-3">
-              <Info class="w-4 h-4 text-[#F9DA82]" />
-              <span class="text-sm text-[#F9DA82] font-medium">Most AddOns are Applied automatically. Add them manually if they were missed</span>
-            </div>
-            <table class="w-full">
-              <tbody>
-                <tr
-                  v-for="(addon, index) in loan.notAppliedAddons"
-                  :key="index"
-                  class="border-b border-[#F3F4F6] py-3"
-                  :class="index % 2 === 0 ? 'bg-white' : 'bg-[#F8F7FA]'"
-                >
-                  <td class="text-sm text-[#1A1A2E] py-3 w-1/4">{{ addon.name }}</td>
-                  <td class="text-sm text-[#1A1A2E] font-medium py-3 w-1/4">{{ formatCurrency(addon.amount) }}</td>
-                  <td class="py-3 w-1/4">
-                    <div v-if="addon.status === 'Not Added'" class="flex items-center gap-1">
-                      <X class="w-3 h-3 text-[#E8604A]" />
-                      <span class="text-[#E8604A] text-sm">Not Added</span>
-                    </div>
-                    <div v-else class="flex items-center gap-1">
-                      <Check class="w-3 h-3 text-[#166534]" />
-                      <span class="text-[#166534] text-sm">Added</span>
-                    </div>
-                  </td>
-                  <td class="py-3 w-1/4">
-                    <button
-                      v-if="addon.status === 'Not Added'"
-                      type="button"
-                      @click="handleAddAddon(addon.name)"
-                      class="bg-[#166534] hover:bg-[#14532D] text-white px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1"
-                    >
-                      <Plus class="w-3 h-3" />
-                      Add
-                    </button>
-                    <button
-                      v-else
-                      type="button"
-                      @click="handleRemoveAddon(addon.name)"
-                      class="bg-[#E8604A] hover:bg-[#DC2626] text-white px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1"
-                    >
-                      <Minus class="w-3 h-3" />
-                      Remove
-                    </button>
-                  </td>
+                  <td class="px-4 py-3 text-[#4B4B6B]">{{ formatDate(addon.appliedAt) }}</td>
                 </tr>
               </tbody>
             </table>
           </div>
-        </div>
-      </div>
-
-      <!-- Deductions Tab -->
-      <div v-else-if="activeTab === 'deductions'" class="flex gap-6 p-6 items-start">
-        <!-- Left: Icon Placeholder -->
-        <div class="w-20 h-20 bg-[#F3F4F6] rounded-lg flex items-center justify-center shrink-0">
-          <MinusCircle class="w-10 h-10 text-[#9CA3AF]" />
+          <p v-else class="text-sm text-[#9CA3AF] italic p-6 text-center border border-[#E5E0EA] rounded-lg bg-gray-50">No AddOns available for this loan.</p>
         </div>
 
-        <!-- Right: Content -->
-        <div class="flex-1">
-          <!-- Section 1: APPLIED -->
-          <div>
-            <h3 class="text-sm font-bold text-[#1A1A2E] uppercase tracking-wider mb-3">APPLIED</h3>
-            <table class="w-full">
-              <thead>
+        <!-- Deductions Tab -->
+        <div v-else-if="activeTab === 'deductions'" class="space-y-4">
+          <div v-if="loan.deductions && loan.deductions.length > 0" class="overflow-x-auto rounded-lg border border-[#E5E0EA]">
+            <table class="min-w-full text-sm">
+              <thead class="bg-[#F8F7FA]">
                 <tr>
-                  <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 border-b border-[#E5E0EA]">Name</th>
-                  <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 border-b border-[#E5E0EA]">Amount</th>
-                  <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 border-b border-[#E5E0EA]">Date Applied</th>
-                  <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 border-b border-[#E5E0EA]">Action</th>
+                  <th class="px-4 py-3 text-left font-semibold text-[#4B4B6B]">Name</th>
+                  <th class="px-4 py-3 text-left font-semibold text-[#4B4B6B]">Amount</th>
+                  <th class="px-4 py-3 text-left font-semibold text-[#4B4B6B]">Applied</th>
+                  <th class="px-4 py-3 text-left font-semibold text-[#4B4B6B]">Applied At</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-if="loan.appliedDeductions.length === 0">
-                  <td colspan="4" class="text-sm text-[#9CA3AF] py-3">No applied deductions</td>
+                <tr v-for="ded in loan.deductions" :key="ded.id" class="border-t border-[#E5E0EA] bg-white">
+                  <td class="px-4 py-3 font-medium text-[#1A1A2E]">{{ ded.name }}</td>
+                  <td class="px-4 py-3 text-[#1A1A2E]">{{ formatCurrency(ded.amount) }}</td>
+                  <td class="px-4 py-3">
+                    <span v-if="ded.isApplied" class="px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs font-bold">Yes</span>
+                    <span v-else class="px-2 py-0.5 rounded bg-gray-100 text-gray-800 text-xs font-bold">No</span>
+                  </td>
+                  <td class="px-4 py-3 text-[#4B4B6B]">{{ formatDate(ded.appliedAt) }}</td>
                 </tr>
               </tbody>
             </table>
-            <div class="mt-3">
-              <span class="text-sm text-[#4B4B6B]">Total: </span>
-              <span class="text-sm font-bold text-[#1A1A2E]">Ksh 0.00</span>
-            </div>
           </div>
+          <p v-else class="text-sm text-[#9CA3AF] italic p-6 text-center border border-[#E5E0EA] rounded-lg bg-gray-50">No Deductions available for this loan.</p>
+        </div>
 
-          <!-- Section 2: NOT APPLIED -->
-          <div class="mt-8">
-            <h3 class="text-sm font-bold text-[#1A1A2E] uppercase tracking-wider mb-1">NOT APPLIED</h3>
-            <div class="flex items-center gap-1 mb-3">
-              <Info class="w-4 h-4 text-[#F9DA82]" />
-              <span class="text-sm text-[#F9DA82] font-medium">Most Deductions are Applied automatically. Add them manually if they were missed</span>
-            </div>
-            <div class="border border-[#E5E0EA] rounded-md px-4 py-3 bg-white text-[#9CA3AF] text-sm">
-              No Additional Deductions specified in settings
-            </div>
+        <!-- Pay Schedule Tab -->
+        <div v-else-if="activeTab === 'pay-schedule'" class="space-y-4">
+          <div v-if="loan.paySchedules && loan.paySchedules.length > 0" class="overflow-x-auto rounded-lg border border-[#E5E0EA]">
+            <table class="min-w-full text-sm">
+              <thead class="bg-[#F8F7FA]">
+                <tr>
+                  <th class="px-4 py-3 text-left font-semibold text-[#4B4B6B]">Due Date</th>
+                  <th class="px-4 py-3 text-left font-semibold text-[#4B4B6B]">Amount Due</th>
+                  <th class="px-4 py-3 text-left font-semibold text-[#4B4B6B]">Amount Paid</th>
+                  <th class="px-4 py-3 text-left font-semibold text-[#4B4B6B]">Balance</th>
+                  <th class="px-4 py-3 text-left font-semibold text-[#4B4B6B]">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="sched in loan.paySchedules" :key="sched.id" class="border-t border-[#E5E0EA] bg-white">
+                  <td class="px-4 py-3 font-medium text-[#1A1A2E]">{{ formatDate(sched.dueDate) }}</td>
+                  <td class="px-4 py-3 text-[#1A1A2E]">{{ formatCurrency(sched.amountDue) }}</td>
+                  <td class="px-4 py-3 text-[#166534]">{{ formatCurrency(sched.amountPaid) }}</td>
+                  <td class="px-4 py-3 text-[#E8604A] font-medium">{{ formatCurrency(sched.balance) }}</td>
+                  <td class="px-4 py-3">
+                    <span class="px-2 py-0.5 rounded-sm text-xs font-bold" :class="sched.status === 'Repaid' || sched.status === 'Paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'">{{ sched.status }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-        </div>
-      </div>
-
-      <!-- Pay Schedule Tab -->
-      <div v-else-if="activeTab === 'pay-schedule'" class="flex gap-6 p-6 items-start">
-        <!-- Left: Icon Placeholder -->
-        <div class="w-20 h-20 bg-[#F3F4F6] rounded-lg flex items-center justify-center shrink-0">
-          <Calendar class="w-10 h-10 text-[#9CA3AF]" />
+          <p v-else class="text-sm text-[#9CA3AF] italic p-6 text-center border border-[#E5E0EA] rounded-lg bg-gray-50">No Pay Schedule generated yet.</p>
         </div>
 
-        <!-- Right: Content -->
-        <div class="flex-1">
-          <div class="flex justify-end mb-4">
-            <button
-              type="button"
-              @click="window.print()"
-              class="bg-white border border-[#E5E0EA] text-[#4B4B6B] hover:border-[#4F1964] px-4 py-2 rounded-md text-sm flex items-center gap-2"
-            >
-              <Printer class="w-4 h-4" />
-              Print Schedule
-            </button>
-          </div>
-          <table class="w-full">
-            <thead>
-              <tr>
-                <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 border-b border-[#E5E0EA]">Date</th>
-                <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 border-b border-[#E5E0EA]">Amount</th>
-                <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 border-b border-[#E5E0EA]">Balance</th>
-                <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 border-b border-[#E5E0EA]">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="(row, index) in loan.paySchedule"
-                :key="index"
-                class="border-b border-[#F3F4F6] py-3"
-                :class="index % 2 === 0 ? 'bg-white' : 'bg-[#F8F7FA]'"
-              >
-                <td class="text-sm text-[#4B4B6B] py-3">{{ row.date }}</td>
-                <td class="text-sm text-[#1A1A2E] font-medium py-3">{{ formatCurrency(row.amount) }}</td>
-                <td class="text-sm text-[#1A1A2E] py-3">{{ formatCurrency(row.balance) }}</td>
-                <td class="py-3">
-                  <div v-if="row.status === 'Repaid'" class="flex items-center gap-1">
-                    <Check class="w-3 h-3 text-[#166534]" />
-                    <span class="text-[#166534] text-sm font-medium">Repaid</span>
-                  </div>
-                  <div v-else class="flex items-center gap-1">
-                    <X class="w-3 h-3 text-[#E8604A]" />
-                    <span class="text-[#E8604A] text-sm font-medium">Unpaid</span>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Collateral Tab -->
-      <div v-else-if="activeTab === 'collateral'" class="flex gap-6 p-6 items-start">
-        <!-- Left: Icon Placeholder -->
-        <div class="w-20 h-20 bg-[#F3F4F6] rounded-lg flex items-center justify-center shrink-0">
-          <Car class="w-10 h-10 text-[#9CA3AF]" />
+        <!-- Placeholders for other tabs -->
+        <div v-else class="p-10 flex flex-col items-center justify-center border border-dashed border-[#E5E0EA] rounded-lg bg-gray-50">
+          <Info class="w-8 h-8 text-[#9CA3AF] mb-3" />
+          <h3 class="text-lg font-medium text-[#1A1A2E]">Data Not Available</h3>
+          <p class="text-sm text-[#9CA3AF] text-center max-w-sm mt-1">
+            This module currently lacks detailed records for {{ activeTab.replace('-', ' ') }}. 
+          </p>
         </div>
 
-        <!-- Right: Content -->
-        <div class="flex-1">
-          <div class="flex justify-end mb-4">
-            <button
-              type="button"
-              @click="console.log('add collateral')"
-              class="bg-[#4F1964] hover:bg-[#380F47] text-white px-4 py-2 rounded-md text-sm flex items-center gap-2"
-            >
-              <Edit2 class="w-4 h-4" />
-              Add/Edit Collateral
-            </button>
-          </div>
-          <table class="w-full">
-            <thead>
-              <tr>
-                <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 border-b border-[#E5E0EA]">Name</th>
-                <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 border-b border-[#E5E0EA]">Type</th>
-                <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 border-b border-[#E5E0EA]">Status</th>
-                <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 border-b border-[#E5E0EA]">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="(col, index) in loan.loanCollateral"
-                :key="index"
-                class="border-b border-[#F3F4F6] py-3"
-                :class="index % 2 === 0 ? 'bg-white' : 'bg-[#F8F7FA]'"
-              >
-                <td class="text-sm text-[#1A1A2E] py-3">{{ col.name }}</td>
-                <td class="text-sm text-[#4B4B6B] py-3">{{ col.type }}</td>
-                <td class="py-3">
-                  <div class="flex items-center gap-1">
-                    <Info class="w-3 h-3 text-[#F9DA82]" />
-                    <span class="text-[#F9DA82] text-sm">Not Used</span>
-                  </div>
-                </td>
-                <td class="py-3">
-                  <button
-                    type="button"
-                    @click="console.log('apply', col.name)"
-                    class="bg-[#166534] hover:bg-[#14532D] text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1"
-                  >
-                    <Check class="w-3 h-3" />
-                    Apply
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Repayments Tab -->
-      <div v-else-if="activeTab === 'repayments'" class="flex gap-6 p-6 items-start">
-        <!-- Left: Icon Placeholder -->
-        <div class="w-20 h-20 bg-[#F3F4F6] rounded-lg flex items-center justify-center shrink-0">
-          <Download class="w-10 h-10 text-[#9CA3AF]" />
-        </div>
-
-        <!-- Right: Content -->
-        <div class="flex-1">
-          <div class="flex justify-end mb-4">
-            <button
-              type="button"
-              @click="console.log('record payment')"
-              class="bg-[#4F1964] hover:bg-[#380F47] text-white px-4 py-2 rounded-md text-sm flex items-center gap-2"
-            >
-              <Plus class="w-4 h-4" />
-              + Record Payment
-            </button>
-          </div>
-          <table class="w-full">
-            <thead>
-              <tr>
-                <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 border-b border-[#E5E0EA]">ID</th>
-                <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 border-b border-[#E5E0EA]">Transaction Code</th>
-                <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 border-b border-[#E5E0EA]">Amount</th>
-                <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 border-b border-[#E5E0EA]">Date Repaid</th>
-                <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 border-b border-[#E5E0EA]">Payer Details</th>
-                <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 border-b border-[#E5E0EA]">Payment Method</th>
-                <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 border-b border-[#E5E0EA]">Status</th>
-                <th class="text-left text-[#4F1964] text-xs font-semibold uppercase tracking-wider pb-2 border-b border-[#E5E0EA]">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="(rep, index) in loan.repayments"
-                :key="index"
-                class="border-b border-[#F3F4F6] py-3"
-                :class="index % 2 === 0 ? 'bg-white' : 'bg-[#F8F7FA]'"
-              >
-                <td class="font-mono text-xs text-[#4B4B6B] py-3">{{ rep.id }}</td>
-                <td class="font-mono text-xs text-[#1A1A2E] py-3">{{ rep.transactionCode }}</td>
-                <td class="text-sm font-medium text-[#1A1A2E] py-3">{{ formatCurrency(rep.amount) }}</td>
-                <td class="py-3">
-                  <div class="text-xs text-[#4B4B6B]">{{ rep.dateRepaid }}</div>
-                  <span class="mt-1 inline-block bg-[#6B2385] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                    {{ rep.dateLabel }}
-                  </span>
-                </td>
-                <td class="py-3">
-                  <div class="text-sm text-[#1A1A2E] font-medium">{{ rep.payerName }}</div>
-                  <div class="text-xs text-[#9CA3AF]">{{ rep.payerPhone }}</div>
-                </td>
-                <td class="text-sm text-[#4B4B6B] py-3">{{ rep.paymentMethod }}</td>
-                <td class="py-3">
-                  <div class="flex items-center gap-1">
-                    <Check class="w-3 h-3 text-[#166534]" />
-                    <span class="text-[#166534] text-sm font-medium">Added</span>
-                  </div>
-                </td>
-                <td class="py-3">
-                  <button type="button" class="text-[#4F1964] cursor-pointer">
-                    <Eye class="w-4 h-4" />
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <div class="mt-3">
-            <span class="text-sm text-[#4B4B6B]">Total: </span>
-            <span class="text-sm font-bold text-[#1A1A2E]">{{ formatCurrency(loan.repayments.reduce((sum, r) => sum + r.amount, 0)) }}</span>
-          </div>
-        </div>
       </div>
     </div>
-  </div>
+    
+    <div v-else class="flex flex-col items-center justify-center pt-32">
+      <XCircle class="w-8 h-8 text-[#E8604A]" />
+      <span class="mt-4 text-[#4B4B6B]">Loan not found.</span>
+    </div>
 
-  <!-- Not Found -->
-  <div v-else class="min-h-screen flex flex-col items-center justify-center">
-    <p class="text-[#9CA3AF] text-lg mb-4">Loan not found</p>
-    <button
-      type="button"
-      @click="router.push('/loans/all')"
-      class="bg-[#4F1964] text-white px-4 py-2 rounded-md text-sm font-medium"
-    >
-      Back to Loans
-    </button>
+    <!-- Disburse Modal -->
+    <Teleport to="body">
+      <div v-if="showDisburseModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+          <div class="px-6 py-4 border-b border-[#E5E0EA] flex justify-between items-center bg-[#F8F7FA]">
+            <h3 class="text-lg font-bold text-[#1A1A2E]">Disburse Loan</h3>
+            <button @click="showDisburseModal = false" class="text-[#9CA3AF] hover:text-[#4F1964]">
+              <X class="w-5 h-5" />
+            </button>
+          </div>
+          <div class="p-6 space-y-4">
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-[#1A1A2E]">M-Pesa Transaction Code *</label>
+              <input 
+                type="text" 
+                v-model="disburseForm.mpesaCode" 
+                placeholder="e.g. SDF98S7DF9S" 
+                class="w-full rounded-md border border-[#E5E0EA] px-3 py-2 text-sm outline-none transition focus:border-[#4F1964] focus:ring-1 focus:ring-[#4F1964]" 
+              />
+            </div>
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-[#1A1A2E]">Disbursement Date & Time *</label>
+              <input 
+                type="datetime-local" 
+                v-model="disburseForm.disbursedAt" 
+                class="w-full rounded-md border border-[#E5E0EA] px-3 py-2 text-sm outline-none transition focus:border-[#4F1964] focus:ring-1 focus:ring-[#4F1964]" 
+              />
+            </div>
+          </div>
+          <div class="px-6 py-4 border-t border-[#E5E0EA] flex justify-end gap-3 bg-gray-50">
+            <button 
+              @click="showDisburseModal = false" 
+              class="px-4 py-2 text-sm font-medium text-[#4B4B6B] bg-white border border-[#E5E0EA] rounded-md hover:border-[#4F1964]"
+            >
+              Cancel
+            </button>
+            <button 
+              @click="handleDisburse" 
+              :disabled="!disburseForm.mpesaCode || isDisbursing"
+              class="inline-flex items-center gap-2 px-6 py-2 text-sm font-medium text-white bg-[#4F1964] rounded-md hover:bg-[#380F47] disabled:opacity-50"
+            >
+              <Loader2 v-if="isDisbursing" class="w-4 h-4 animate-spin" />
+              Confirm Disbursement
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

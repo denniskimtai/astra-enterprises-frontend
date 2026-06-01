@@ -81,8 +81,9 @@ const navItems = [
   {
     label: 'Settings',
     icon: Settings,
-    path: '/settings',
-    children: [],
+    children: [
+      { label: 'Loan Products', path: '/settings/loan-products' }
+    ],
     roles: [UserRole.LOAN_OFFICER, UserRole.MANAGER, UserRole.ADMIN]
   }
 ]
