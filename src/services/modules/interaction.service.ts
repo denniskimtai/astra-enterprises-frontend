@@ -4,20 +4,19 @@ import type { PagedResult } from '@/types/customer.types'
 export interface Interaction {
   id: string
   customerId: string
+  loanId: string | null
   agentId: string
-  agentName: string
-  mode: 'Call' | 'Visit' | 'Message' | string
+  mode: string // 'Call' | 'Visit' | 'Message' | 'FaceToFace'
   purpose: string
   outcomeDetails: string
-  outcomeStatus: 'Contactable' | 'Promised to Pay' | 'Not Reachable' | string
-  tag: string
+  outcomeStatus: string // 'Contactable' | 'PromisedToPay' | 'NotReachable'
+  tag: string // 'Lead' | 'Active' | 'CreatedLoan'
+  promisedAmount: number | null
   defaultReason: string | null
   nextSteps: string | null
   locationGeo: string | null
-  interactionAt: string
-  loanId: string | null
-  promisedAmount: number | null
   nextInteractionDate: string | null
+  interactionAt: string
   createdAt: string
   updatedAt: string | null
 }
@@ -38,7 +37,20 @@ export async function getInteractions(params?: GetInteractionsParams): Promise<P
   return response.data
 }
 
-export async function createInteraction(payload: Omit<Interaction, 'id' | 'agentName' | 'createdAt' | 'updatedAt'>): Promise<string> {
+export async function getInteractionById(id: string): Promise<Interaction> {
+  const response = await api.get<Interaction>(`/api/interactions/${id}`)
+  return response.data
+}
+
+export async function createInteraction(payload: Omit<Interaction, 'id' | 'agentId' | 'createdAt' | 'updatedAt'>): Promise<string> {
   const response = await api.post<string>('/api/interactions', payload)
   return response.data
+}
+
+export async function updateInteraction(id: string, payload: Omit<Interaction, 'id' | 'customerId' | 'agentId' | 'createdAt' | 'updatedAt'>): Promise<void> {
+  await api.put(`/api/interactions/${id}`, payload)
+}
+
+export async function deleteInteraction(id: string): Promise<void> {
+  await api.delete(`/api/interactions/${id}`)
 }

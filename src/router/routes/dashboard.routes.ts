@@ -48,6 +48,12 @@ const dashboardRoutes: RouteRecordRaw[] = [
     meta: { layout: 'dashboard', requiresAuth: true, title: 'Interactions' }
   },
   {
+    path: '/crm/interactions/new',
+    name: 'crm-interactions-new',
+    component: () => import('@/modules/crm/views/CreateInteraction.vue'),
+    meta: { layout: 'dashboard', requiresAuth: true, title: 'Add New Interaction' }
+  },
+  {
     path: '/loans/all',
     name: 'loans-all',
     component: () => import('@/modules/loans/views/AllLoans.vue'),

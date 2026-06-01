@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   RefreshCw,
@@ -14,27 +14,13 @@ import {
   AlignJustify,
   Plus,
   ChevronDown,
-  Search
+  Search,
+  Loader2
 } from 'lucide-vue-next'
 import InteractionDetailModal from '@/modules/crm/components/InteractionDetailModal.vue'
-
-interface Interaction {
-  id: number
-  customerName: string
-  branch: string
-  contactStatus: 'Contactable' | 'Promised to Pay' | 'Not Reachable'
-  interactionMode: 'Call' | 'Visit' | 'Message'
-  date: string
-  timeLabel: 'TODAY' | 'YESTERDAY' | '2 DAYS AGO' | '3 DAYS AGO'
-  time: string
-  agent: string
-  outcomeDetails: string
-  outcomeType: 'CREATED(LOAN)' | 'ACTIVE(CLIENT)' | 'LEAD(CLIENT)'
-  nextInteractionDate: string
-  nextInteractionLabel: 'TODAY' | 'TOMORROW' | 'YESTERDAY'
-  loanId: string | null
-  balance: number
-}
+import { getInteractions, type Interaction } from '@/services/modules/interaction.service'
+import { getCustomers } from '@/services/modules/customer.service'
+import type { Customer } from '@/types/customer.types'
 
 const router = useRouter()
 const activeTab = ref<'all' | 'my' | 'ptps'>('all')
@@ -43,167 +29,92 @@ const interactionDate = ref('')
 const nextDateToggle = ref(false)
 const selectedInteraction = ref<Interaction | null>(null)
 const showModal = ref(false)
+const isLoading = ref(false)
 
 const filterPills = ['All Outcomes', 'Customer Type', 'All Methods', 'All Branches']
 
-const interactions = ref<Interaction[]>([
-  {
-    id: 3001,
-    customerName: 'Grace Wanjiku',
-    branch: 'Mumias',
-    contactStatus: 'Contactable',
-    interactionMode: 'Call',
-    date: '18 Apr 2026',
-    timeLabel: 'TODAY',
-    time: '10:30 AM',
-    agent: 'Samuel Ouma',
-    outcomeDetails: 'Discussed loan application for small business expansion. Customer interested in Bizboost Loan with 12-month term.',
-    outcomeType: 'CREATED(LOAN)',
-    nextInteractionDate: '19 Apr 2026',
-    nextInteractionLabel: 'TOMORROW',
-    loanId: 'L-1001',
-    balance: 15000
-  },
-  {
-    id: 3002,
-    customerName: 'Joseph Kiprop',
-    branch: 'Kisumu',
-    contactStatus: 'Promised to Pay',
-    interactionMode: 'Call',
-    date: '17 Apr 2026',
-    timeLabel: 'YESTERDAY',
-    time: '02:15 PM',
-    agent: 'Mercy Otieno',
-    outcomeDetails: 'Follow-up on existing loan. Customer confirmed payment schedule and requested extension for next installment.',
-    outcomeType: 'ACTIVE(CLIENT)',
-    nextInteractionDate: '18 Apr 2026',
-    nextInteractionLabel: 'TODAY',
-    loanId: 'L-1002',
-    balance: 28500
-  },
-  {
-    id: 3003,
-    customerName: 'Ann Nyambura',
-    branch: 'Narok',
-    contactStatus: 'Not Reachable',
-    interactionMode: 'Call',
-    date: '16 Apr 2026',
-    timeLabel: '2 DAYS AGO',
-    time: '11:45 AM',
-    agent: 'Peter Karanja',
-    outcomeDetails: 'Attempted contact for loan review. Left voicemail requesting callback for loan restructuring discussion.',
-    outcomeType: 'ACTIVE(CLIENT)',
-    nextInteractionDate: '17 Apr 2026',
-    nextInteractionLabel: 'YESTERDAY',
-    loanId: 'L-1003',
-    balance: 42000
-  },
-  {
-    id: 3004,
-    customerName: 'David Mutua',
-    branch: 'Mombasa',
-    contactStatus: 'Contactable',
-    interactionMode: 'Call',
-    date: '18 Apr 2026',
-    timeLabel: 'TODAY',
-    time: '09:20 AM',
-    agent: 'Alice Kamau',
-    outcomeDetails: 'New lead inquiry about Faida Loan. Customer owns small retail shop and needs working capital.',
-    outcomeType: 'LEAD(CLIENT)',
-    nextInteractionDate: '20 Apr 2026',
-    nextInteractionLabel: 'TOMORROW',
-    loanId: null,
-    balance: 0
-  },
-  {
-    id: 3005,
-    customerName: 'Rose Achieng',
-    branch: 'Kisumu',
-    contactStatus: 'Promised to Pay',
-    interactionMode: 'Call',
-    date: '17 Apr 2026',
-    timeLabel: 'YESTERDAY',
-    time: '04:10 PM',
-    agent: 'Brian Mutiso',
-    outcomeDetails: 'Reviewed loan performance. Customer made partial payment and committed to full settlement by end of month.',
-    outcomeType: 'ACTIVE(CLIENT)',
-    nextInteractionDate: '18 Apr 2026',
-    nextInteractionLabel: 'TODAY',
-    loanId: 'L-1004',
-    balance: 18700
-  },
-  {
-    id: 3006,
-    customerName: 'Michael Kipkoech',
-    branch: 'Narok',
-    contactStatus: 'Contactable',
-    interactionMode: 'Call',
-    date: '15 Apr 2026',
-    timeLabel: '3 DAYS AGO',
-    time: '01:55 PM',
-    agent: 'Grace Wairimu',
-    outcomeDetails: 'Field visit follow-up. Confirmed loan disbursement and discussed business growth plans.',
-    outcomeType: 'CREATED(LOAN)',
-    nextInteractionDate: '19 Apr 2026',
-    nextInteractionLabel: 'TOMORROW',
-    loanId: 'L-1005',
-    balance: 32000
-  },
-  {
-    id: 3007,
-    customerName: 'Lucy Wambui',
-    branch: 'Mumias',
-    contactStatus: 'Not Reachable',
-    interactionMode: 'Call',
-    date: '16 Apr 2026',
-    timeLabel: '2 DAYS AGO',
-    time: '03:40 PM',
-    agent: 'Esther Ndegwa',
-    outcomeDetails: 'Attempted contact for loan renewal. Will retry tomorrow as customer was unavailable.',
-    outcomeType: 'ACTIVE(CLIENT)',
-    nextInteractionDate: '17 Apr 2026',
-    nextInteractionLabel: 'YESTERDAY',
-    loanId: 'L-1006',
-    balance: 25600
-  },
-  {
-    id: 3008,
-    customerName: 'James Oduya',
-    branch: 'Mombasa',
-    contactStatus: 'Promised to Pay',
-    interactionMode: 'Call',
-    date: '18 Apr 2026',
-    timeLabel: 'TODAY',
-    time: '12:05 PM',
-    agent: 'Angela Njeri',
-    outcomeDetails: 'New client onboarding. Completed loan application and scheduled document collection.',
-    outcomeType: 'CREATED(LOAN)',
-    nextInteractionDate: '20 Apr 2026',
-    nextInteractionLabel: 'TOMORROW',
-    loanId: 'L-1007',
-    balance: 0
+const interactions = ref<Interaction[]>([])
+const customerMap = ref<Record<string, Customer>>({})
+
+const loadCustomers = async () => {
+  try {
+    const res = await getCustomers({ pageSize: 100 })
+    if (res && res.items) {
+      res.items.forEach(c => {
+        customerMap.value[c.id] = c
+      })
+    }
+  } catch (error) {
+    console.error('Failed to load customers:', error)
   }
-])
+}
+
+const loadInteractions = async () => {
+  try {
+    isLoading.value = true
+    let outcomeStatus = undefined
+    if (activeTab.value === 'ptps') outcomeStatus = 'PromisedToPay'
+    
+    const res = await getInteractions({ page: 1, pageSize: 50, outcomeStatus })
+    if (res && res.items) {
+      interactions.value = res.items
+    } else {
+      interactions.value = []
+    }
+  } catch (error) {
+    console.error('Failed to load interactions:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(() => {
+  loadCustomers()
+  loadInteractions()
+})
+
+watch(activeTab, () => {
+  loadInteractions()
+})
 
 const goToNewInteraction = (): void => {
   router.push('/crm/interactions/new')
 }
 
 const onSearch = (): void => {
-  // Search UI is display-only as requested
+  loadInteractions()
 }
 
 const getNextInteractionBadgeColor = (label: string) => {
-  switch (label) {
-    case 'YESTERDAY':
-      return 'bg-gradient-to-r from-[#4F1964] to-[#6B2385] text-white'
-    case 'TODAY':
-      return 'bg-[#6B2385] text-white'
-    case 'TOMORROW':
-      return 'bg-[#F9DA82] text-[#1A1A2E]'
-    default:
-      return 'bg-gray-200 text-gray-600'
-  }
+  if (label === 'TODAY') return 'bg-[#6B2385] text-white'
+  if (label === 'YESTERDAY') return 'bg-gradient-to-r from-[#4F1964] to-[#6B2385] text-white'
+  if (label === 'TOMORROW') return 'bg-[#F9DA82] text-[#1A1A2E]'
+  return 'bg-gray-200 text-gray-600'
+}
+
+const formatDate = (isoString: string | null) => {
+  if (!isoString) return 'N/A'
+  const d = new Date(isoString)
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+const formatTime = (isoString: string | null) => {
+  if (!isoString) return ''
+  const d = new Date(isoString)
+  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+}
+
+const getTimeLabel = (isoString: string | null) => {
+  if (!isoString) return ''
+  const d = new Date(isoString)
+  const today = new Date()
+  const diffTime = d.getTime() - today.getTime()
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24))
+  if (diffDays === 0) return 'TODAY'
+  if (diffDays === -1) return 'YESTERDAY'
+  if (diffDays === 1) return 'TOMORROW'
+  if (diffDays < 0) return `${Math.abs(diffDays)} DAYS AGO`
+  return `IN ${diffDays} DAYS`
 }
 </script>
 
@@ -350,7 +261,21 @@ const getNextInteractionBadgeColor = (label: string) => {
             </tr>
           </thead>
           <tbody>
+            <tr v-if="isLoading">
+              <td colspan="9" class="px-4 py-8 text-center text-sm text-[#9CA3AF]">
+                <div class="flex items-center justify-center gap-2">
+                  <Loader2 class="w-5 h-5 animate-spin text-[#4F1964]" />
+                  <span>Loading interactions...</span>
+                </div>
+              </td>
+            </tr>
+            <tr v-else-if="interactions.length === 0">
+              <td colspan="9" class="px-4 py-8 text-center text-sm text-[#9CA3AF]">
+                No interactions found.
+              </td>
+            </tr>
             <tr
+              v-else
               v-for="(interaction, index) in interactions"
               :key="interaction.id"
               :class="[
@@ -359,61 +284,62 @@ const getNextInteractionBadgeColor = (label: string) => {
               ]"
             >
               <td class="px-4 py-3 text-sm text-[#374151]">
-                <span class="text-[#4B4B6B] font-mono text-xs">{{ interaction.id }}</span>
+                <span class="text-[#4B4B6B] font-mono text-xs">{{ interaction.id.slice(0, 8) }}</span>
               </td>
               <td class="px-4 py-3 text-sm text-[#374151]">
                 <div class="space-y-1">
                   <div class="flex items-center">
-                    <span class="text-[#1A1A2E] font-medium text-sm">{{ interaction.customerName }}</span>
+                    <span class="text-[#1A1A2E] font-medium text-sm">{{ customerMap[interaction.customerId]?.fullName || 'Loading...' }}</span>
                     <ExternalLink class="w-3 h-3 text-[#6B2385] ml-1 cursor-pointer" />
                   </div>
-                  <div class="text-[#9CA3AF] text-xs">{{ interaction.branch }}</div>
+                  <div class="text-[#9CA3AF] text-xs">Branch: {{ customerMap[interaction.customerId]?.branchId?.slice(0, 8) || 'N/A' }}</div>
                   <div class="flex items-center gap-1 mt-1">
                     <Flag class="w-3 h-3 text-[#F9DA82]" />
-                    <span class="text-[#6B2385] text-xs font-medium">{{ interaction.contactStatus }}</span>
+                    <span class="text-[#6B2385] text-xs font-medium">{{ interaction.outcomeStatus }}</span>
                   </div>
                 </div>
               </td>
               <td class="px-4 py-3 text-sm text-[#374151]">
                 <div class="flex flex-col items-center">
                   <Phone class="w-4 h-4 text-[#4F1964]" />
-                  <span class="text-[#4B4B6B] text-xs mt-0.5">{{ interaction.interactionMode }}</span>
+                  <span class="text-[#4B4B6B] text-xs mt-0.5">{{ interaction.mode }}</span>
                 </div>
               </td>
               <td class="px-4 py-3 text-sm text-[#374151]">
                 <div class="space-y-2">
-                  <div class="text-[#4B4B6B] text-xs">{{ interaction.date }}</div>
-                  <div class="inline-flex items-center rounded-full bg-gradient-to-r from-[#4F1964] to-[#6B2385] px-2 py-0.5 text-[10px] font-bold text-white">{{ interaction.timeLabel }}</div>
-                  <div class="text-[#6B2385] text-xs font-medium">{{ interaction.time }}</div>
+                  <div class="text-[#4B4B6B] text-xs">{{ formatDate(interaction.interactionAt) }}</div>
+                  <div class="inline-flex items-center rounded-full bg-gradient-to-r from-[#4F1964] to-[#6B2385] px-2 py-0.5 text-[10px] font-bold text-white">{{ getTimeLabel(interaction.interactionAt) }}</div>
+                  <div class="text-[#6B2385] text-xs font-medium">{{ formatTime(interaction.interactionAt) }}</div>
                 </div>
               </td>
               <td class="px-4 py-3 text-sm text-[#374151]">
-                <span class="text-[#1A1A2E] text-xs font-medium">{{ interaction.agent }}</span>
+                <span class="text-[#1A1A2E] text-xs font-medium">{{ interaction.agentId?.slice(0, 8) || 'Unknown' }}</span>
               </td>
               <td class="px-4 py-3 text-sm text-[#374151]">
                 <div class="space-y-1">
-                  <div class="text-[#4B4B6B] text-xs leading-relaxed max-w-md" style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
+                  <div class="text-[#4B4B6B] text-xs leading-relaxed max-w-md" style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;" :title="interaction.outcomeDetails">
                     {{ interaction.outcomeDetails }}
                   </div>
                   <div class="inline-flex rounded-sm bg-[#EDE9F5] border border-[#C4B5D4] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#4F1964] mt-1">
-                    {{ interaction.outcomeType }}
+                    {{ interaction.tag }}
                   </div>
                 </div>
               </td>
               <td class="px-4 py-3 text-sm text-[#374151]">
                 <div class="space-y-2">
-                  <div class="text-[#4B4B6B] text-xs">{{ interaction.nextInteractionDate }}</div>
-                  <div :class="['inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold', getNextInteractionBadgeColor(interaction.nextInteractionLabel)]">
-                    {{ interaction.nextInteractionLabel }}
+                  <div class="text-[#4B4B6B] text-xs">{{ formatDate(interaction.nextInteractionDate) }}</div>
+                  <div v-if="interaction.nextInteractionDate" :class="['inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold', getNextInteractionBadgeColor(getTimeLabel(interaction.nextInteractionDate))]">
+                    {{ getTimeLabel(interaction.nextInteractionDate) }}
                   </div>
+                  <div v-else class="text-xs text-[#9CA3AF]">-</div>
                 </div>
               </td>
               <td class="px-4 py-3 text-sm text-[#374151]">
                 <div class="space-y-1">
                   <div class="text-[#9CA3AF] text-xs">Loan ID:</div>
-                  <div class="text-[#1A1A2E] text-xs font-semibold">{{ interaction.loanId || 'Null' }}</div>
-                  <div class="text-[#9CA3AF] text-xs">Balance:</div>
-                  <div class="text-[#E8604A] text-xs font-bold">KES {{ interaction.balance.toLocaleString() }}</div>
+                  <div class="text-[#1A1A2E] text-xs font-semibold">{{ interaction.loanId ? interaction.loanId.slice(0,8) : 'Null' }}</div>
+                  <div class="text-[#9CA3AF] text-xs" v-if="interaction.outcomeStatus === 'PromisedToPay'">Promised:</div>
+                  <div class="text-[#E8604A] text-xs font-bold" v-if="interaction.outcomeStatus === 'PromisedToPay'">KES {{ interaction.promisedAmount?.toLocaleString() || '0' }}</div>
                 </div>
               </td>
               <td class="px-4 py-3 text-sm text-[#374151]">
@@ -441,6 +367,7 @@ const getNextInteractionBadgeColor = (label: string) => {
     <!-- Interaction Detail Modal -->
     <InteractionDetailModal
       :interaction="selectedInteraction"
+      :customer="customerMap[selectedInteraction?.customerId || '']"
       :show="showModal"
       @close="showModal = false; selectedInteraction = null"
     />
