@@ -110,7 +110,7 @@ const dashboardRoutes: RouteRecordRaw[] = [
   {
     path: '/organization/branches',
     name: 'organization-branches',
-    component: () => import('@/pages/PagePlaceholder.vue'),
+    component: () => import('@/modules/organization/views/BranchesList.vue'),
     meta: { layout: 'dashboard', requiresAuth: true, title: 'Branches' }
   },
   {
