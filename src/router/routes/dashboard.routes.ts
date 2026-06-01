@@ -18,10 +18,22 @@ const dashboardRoutes: RouteRecordRaw[] = [
     meta: { layout: 'dashboard', requiresAuth: true, title: 'Active Customers' }
   },
   {
+    path: '/customers/active/new',
+    name: 'customers-active-new',
+    component: () => import('@/modules/customers/views/CreateCustomer.vue'),
+    meta: { layout: 'dashboard', requiresAuth: true, title: 'Add New Customer' }
+  },
+  {
     path: '/customers/leads',
     name: 'customers-leads',
     component: () => import('@/pages/LeadsPage.vue'),
     meta: { layout: 'dashboard', requiresAuth: true, title: 'Leads' }
+  },
+  {
+    path: '/customers/leads/new',
+    name: 'customers-leads-new',
+    component: () => import('@/modules/customers/views/CreateCustomer.vue'),
+    meta: { layout: 'dashboard', requiresAuth: true, title: 'Add New Lead' }
   },
   {
     path: '/customers/:id',

@@ -1,95 +1,127 @@
-import type { Customer } from '@/types/customer.types'
+import api from '@/services/api'
+import {
+  CustomerStatus,
+  type Customer,
+  type CustomerDetails,
+  type PagedResult,
+  type CreateCustomerPayload,
+  type CustomerBusinessInfo,
+  type CustomerSecondaryInfo
+} from '@/types/customer.types'
 
-const mockCustomers: Customer[] = [
-  {
-    id: '1',
-    firstName: 'John',
-    lastName: 'Doe',
-    email: 'john.doe@email.com',
-    phone: '+1-555-0123',
-    dateOfBirth: '1985-03-15',
-    address: {
-      street: '123 Main St',
-      city: 'Anytown',
-      state: 'CA',
-      zipCode: '12345',
-      country: 'USA'
-    },
-    creditScore: 750,
-    employmentStatus: 'EMPLOYED',
-    annualIncome: 85000,
-    createdAt: '2024-01-10T08:00:00Z',
-    updatedAt: '2024-01-15T10:30:00Z'
-  },
-  {
-    id: '2',
-    firstName: 'Jane',
-    lastName: 'Smith',
-    email: 'jane.smith@email.com',
-    phone: '+1-555-0456',
-    dateOfBirth: '1990-07-22',
-    address: {
-      street: '456 Oak Ave',
-      city: 'Somewhere',
-      state: 'NY',
-      zipCode: '67890',
-      country: 'USA'
-    },
-    creditScore: 680,
-    employmentStatus: 'SELF_EMPLOYED',
-    annualIncome: 95000,
-    createdAt: '2024-02-01T14:20:00Z',
-    updatedAt: '2024-02-01T14:20:00Z'
-  },
-  {
-    id: '3',
-    firstName: 'Bob',
-    lastName: 'Johnson',
-    email: 'bob.johnson@email.com',
-    phone: '+1-555-0789',
-    dateOfBirth: '1978-11-08',
-    address: {
-      street: '789 Pine Rd',
-      city: 'Elsewhere',
-      state: 'TX',
-      zipCode: '54321',
-      country: 'USA'
-    },
-    creditScore: 720,
-    employmentStatus: 'EMPLOYED',
-    annualIncome: 120000,
-    createdAt: '2024-01-28T11:45:00Z',
-    updatedAt: '2024-02-05T09:10:00Z'
-  },
-  {
-    id: '4',
-    firstName: 'Alice',
-    lastName: 'Williams',
-    email: 'alice.williams@email.com',
-    phone: '+1-555-0321',
-    dateOfBirth: '1982-05-30',
-    address: {
-      street: '321 Elm St',
-      city: 'Nowhere',
-      state: 'FL',
-      zipCode: '09876',
-      country: 'USA'
-    },
-    creditScore: 650,
-    employmentStatus: 'UNEMPLOYED',
-    annualIncome: 0,
-    createdAt: '2024-01-10T15:30:00Z',
-    updatedAt: '2024-01-18T13:45:00Z'
-  }
-]
-
-export async function getCustomers(): Promise<Customer[]> {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500))
-  return mockCustomers
+export interface GetCustomersParams {
+  page?: number
+  pageSize?: number
+  searchTerm?: string | null
+  status?: CustomerStatus | string | null
+  branchId?: string | null
 }
 
-export async function getCustomerById(id: string): Promise<Customer | null> {
-  await new Promise(resolve => setTimeout(resolve, 300))
-  return mockCustomers.find(customer => customer.id === id) || null
+function mapStatus(status: any): CustomerStatus {
+  if (typeof status === 'number') {
+    switch (status) {
+      case 0:
+        return CustomerStatus.ACTIVE
+      case 1:
+        return CustomerStatus.LEAD
+      case 2:
+        return CustomerStatus.INACTIVE
+      case 3:
+        return CustomerStatus.BLACKLISTED
+    }
+  }
+  if (typeof status === 'string') {
+    const lower = status.toLowerCase()
+    if (lower === 'active') return CustomerStatus.ACTIVE
+    if (lower === 'lead') return CustomerStatus.LEAD
+    if (lower === 'inactive') return CustomerStatus.INACTIVE
+    if (lower === 'blacklisted') return CustomerStatus.BLACKLISTED
+  }
+  return status as CustomerStatus
+}
+
+export async function getCustomers(params?: GetCustomersParams): Promise<PagedResult<Customer>> {
+  const response = await api.get<PagedResult<Customer>>('/api/customers', {
+    params
+  })
+  const data = response.data
+  if (data && Array.isArray(data.items)) {
+    data.items = data.items.map(item => ({
+      ...item,
+      status: mapStatus(item.status)
+    }))
+  }
+  return data
+}
+
+export async function getCustomerById(id: string): Promise<CustomerDetails> {
+  const response = await api.get<CustomerDetails>(`/api/customers/${id}`)
+  const data = response.data
+  if (data) {
+    data.status = mapStatus(data.status)
+  }
+  return data
+}
+
+export async function createCustomer(payload: CreateCustomerPayload): Promise<string> {
+  const response = await api.post<string>('/api/customers', payload)
+  return response.data
+}
+
+export async function updateCustomerBasicInfo(
+  id: string,
+  payload: Omit<CreateCustomerPayload, 'branchId' | 'businessInfo' | 'secondaryInfo' | 'guarantors' | 'referees'>
+): Promise<void> {
+  await api.put(`/api/customers/${id}`, payload)
+}
+
+export async function updateCustomerBusinessInfo(
+  id: string,
+  payload: Omit<CustomerBusinessInfo, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<void> {
+  await api.put(`/api/customers/${id}/business-info`, payload)
+}
+
+export async function updateCustomerSecondaryInfo(
+  id: string,
+  payload: Omit<CustomerSecondaryInfo, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<void> {
+  await api.put(`/api/customers/${id}/secondary-info`, payload)
+}
+
+export interface AddGuarantorPayload {
+  name: string
+  idNumber: string
+  phone: string
+  amountGuaranteed: number
+  relationship: string
+}
+
+export async function addGuarantor(id: string, payload: AddGuarantorPayload): Promise<string> {
+  const response = await api.post<string>(`/api/customers/${id}/guarantors`, payload)
+  return response.data
+}
+
+export async function removeGuarantor(id: string, guarantorId: string): Promise<void> {
+  await api.delete(`/api/customers/${id}/guarantors/${guarantorId}`)
+}
+
+export interface AddRefereePayload {
+  name: string
+  phone: string
+  physicalAddress: string
+  relationship: string
+}
+
+export async function addReferee(id: string, payload: AddRefereePayload): Promise<string> {
+  const response = await api.post<string>(`/api/customers/${id}/referees`, payload)
+  return response.data
+}
+
+export async function removeReferee(id: string, refereeId: string): Promise<void> {
+  await api.delete(`/api/customers/${id}/referees/${refereeId}`)
+}
+
+export async function deleteCustomer(id: string): Promise<void> {
+  await api.delete(`/api/customers/${id}`)
 }
