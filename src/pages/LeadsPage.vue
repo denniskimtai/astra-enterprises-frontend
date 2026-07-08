@@ -5,10 +5,18 @@ import { ChevronDown, Eye, Flag, MessageCircle, Plus, Search } from 'lucide-vue-
 import { getCustomers } from '@/services/modules/customer.service'
 import { getBranches } from '@/services/modules/branch.service'
 import { type Customer, CustomerStatus } from '@/types/customer.types'
+import { useAuthStore } from '@/stores/auth.store'
+import { UserRole } from '@/types/auth.types'
+
 
 const router = useRouter()
+const authStore = useAuthStore()
 const leads = ref<Customer[]>([])
 const loading = ref(true)
+
+const canAddLead = computed(() => {
+  return authStore.user?.role !== UserRole.COLLECTION_OFFICER
+})
 
 // Pagination & Search
 const page = ref(1)
@@ -25,7 +33,7 @@ const branchesMap = ref<Record<string, string>>({})
 
 const loadBranches = async () => {
   try {
-    const res = await getBranches(1, 100)
+    const res = await getBranches({ page: 1, pageSize: 100 })
     res.items.forEach(b => {
       branchesMap.value[b.id] = b.name
     })
@@ -104,6 +112,7 @@ const formatDate = (dateStr: string): string => {
     <div class="bg-[#F8F7FA] border-b border-[#E5E0EA] px-6 py-3">
       <div class="flex flex-wrap items-center gap-3">
         <button
+          v-if="canAddLead"
           type="button"
           @click="goToNewLead"
           class="ml-auto inline-flex items-center gap-2 rounded-md border-b-2 border-[#F9DA82] bg-[#4F1964] px-5 py-2 text-sm font-medium text-white transition-colors duration-150 hover:bg-[#380F47]"

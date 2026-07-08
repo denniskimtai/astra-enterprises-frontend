@@ -1,4 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router'
+import { UserRole } from '@/types/auth.types'
 
 const dashboardRoutes: RouteRecordRaw[] = [
   {
@@ -21,7 +22,12 @@ const dashboardRoutes: RouteRecordRaw[] = [
     path: '/customers/active/new',
     name: 'customers-active-new',
     component: () => import('@/modules/customers/views/CreateCustomer.vue'),
-    meta: { layout: 'dashboard', requiresAuth: true, title: 'Add New Customer' }
+    meta: { 
+      layout: 'dashboard', 
+      requiresAuth: true, 
+      title: 'Add New Customer',
+      roles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.LOAN_OFFICER]
+    }
   },
   {
     path: '/customers/leads',
@@ -33,7 +39,12 @@ const dashboardRoutes: RouteRecordRaw[] = [
     path: '/customers/leads/new',
     name: 'customers-leads-new',
     component: () => import('@/modules/customers/views/CreateCustomer.vue'),
-    meta: { layout: 'dashboard', requiresAuth: true, title: 'Add New Lead' }
+    meta: { 
+      layout: 'dashboard', 
+      requiresAuth: true, 
+      title: 'Add New Lead',
+      roles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.LOAN_OFFICER]
+    }
   },
   {
     path: '/customers/:id',
@@ -87,7 +98,12 @@ const dashboardRoutes: RouteRecordRaw[] = [
     path: '/loans/new',
     name: 'loans-new',
     component: () => import('@/modules/loans/views/CreateLoan.vue'),
-    meta: { layout: 'dashboard', requiresAuth: true, title: 'New Loan' }
+    meta: { 
+      layout: 'dashboard', 
+      requiresAuth: true, 
+      title: 'New Loan',
+      roles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.LOAN_OFFICER]
+    }
   },
   {
     path: '/loans/:id',
@@ -135,7 +151,12 @@ const dashboardRoutes: RouteRecordRaw[] = [
     path: '/settings/loan-products',
     name: 'settings-loan-products',
     component: () => import('@/modules/settings/views/LoanProductsList.vue'),
-    meta: { layout: 'dashboard', requiresAuth: true, title: 'Loan Products' }
+    meta: { 
+      layout: 'dashboard', 
+      requiresAuth: true, 
+      title: 'Loan Products',
+      roles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.LOAN_OFFICER]
+    }
   },
   {
     path: '/403',

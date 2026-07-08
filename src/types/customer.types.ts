@@ -31,6 +31,7 @@ export interface Customer {
   branchId: string
   createdAt: string
   updatedAt: string | null
+  registrationFeePaid: boolean
 }
 
 export interface CustomerBusinessInfo {

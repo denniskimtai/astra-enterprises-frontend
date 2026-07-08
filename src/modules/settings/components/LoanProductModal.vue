@@ -36,18 +36,29 @@ watch(() => props.isOpen, (newVal) => {
     } else {
       form.value = {
         name: '',
-        minAmount: 0,
+        minAmount: 3000,
         maxAmount: 0,
         interestRate: 0,
-        repaymentDays: 0
+        repaymentDays: 30
       }
     }
   }
 })
 
 const onSubmit = async () => {
+  if (form.value.minAmount < 3000) {
+    alert('Minimum loan limit must be 3000 Ksh onwards.')
+    return
+  }
+
   if (form.value.maxAmount <= form.value.minAmount) {
     alert('Maximum Amount must be greater than Minimum Amount')
+    return
+  }
+
+  const allowedDays = [30, 60, 90]
+  if (!allowedDays.includes(form.value.repaymentDays)) {
+    alert('Repayment term must be exactly 30, 60, or 90 days.')
     return
   }
 
@@ -60,9 +71,19 @@ const onSubmit = async () => {
     }
     emit('saved')
     emit('close')
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error saving loan product:', error)
-    alert('Failed to save loan product. You may lack sufficient permissions.')
+    const serverMessage = error.response?.data?.error?.message || error.response?.data?.message || error.message || ''
+    const status = error.response?.status
+    let alertMsg = 'Failed to save loan product.'
+    if (status === 403) {
+      alertMsg += '\n\nBackend Error: You lack permissions to manage loan products (403 Forbidden).'
+    } else if (serverMessage) {
+      alertMsg += `\n\nBackend Error: ${serverMessage}`
+    } else {
+      alertMsg += '\n\nYou may lack sufficient permissions or a server error occurred.'
+    }
+    alert(alertMsg)
   } finally {
     isLoading.value = false
   }
@@ -101,10 +122,14 @@ const onSubmit = async () => {
                   type="number" 
                   v-model="form.minAmount" 
                   required 
-                  min="1"
+                  min="3000"
                   step="0.01"
-                  class="w-full rounded-md border border-[#E5E0EA] px-3 py-2 text-sm outline-none transition focus:border-[#4F1964] focus:ring-1 focus:ring-[#4F1964]" 
+                  class="w-full rounded-md border px-3 py-2 text-sm outline-none transition focus:border-[#4F1964] focus:ring-1 focus:ring-[#4F1964]" 
+                  :class="form.minAmount < 3000 && form.minAmount > 0 ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-[#E5E0EA]'"
                 />
+                <p v-if="form.minAmount < 3000 && form.minAmount > 0" class="text-xs text-red-500">
+                  Minimum loan limit must be 3000 Ksh onwards.
+                </p>
               </div>
 
               <div class="space-y-2">
@@ -135,14 +160,15 @@ const onSubmit = async () => {
 
               <div class="space-y-2">
                 <label class="block text-sm font-medium text-[#1A1A2E]">Repayment Days *</label>
-                <input 
-                  type="number" 
-                  v-model="form.repaymentDays" 
+                <select 
+                  v-model.number="form.repaymentDays" 
                   required 
-                  min="1"
-                  step="1"
-                  class="w-full rounded-md border border-[#E5E0EA] px-3 py-2 text-sm outline-none transition focus:border-[#4F1964] focus:ring-1 focus:ring-[#4F1964]" 
-                />
+                  class="w-full rounded-md border border-[#E5E0EA] px-3 py-2 text-sm outline-none transition focus:border-[#4F1964] focus:ring-1 focus:ring-[#4F1964] bg-white"
+                >
+                  <option :value="30">30 Days</option>
+                  <option :value="60">60 Days</option>
+                  <option :value="90">90 Days</option>
+                </select>
               </div>
             </div>
           </form>

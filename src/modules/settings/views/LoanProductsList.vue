@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import { useAuthStore } from '@/stores/auth.store'
+import { UserRole } from '@/types/auth.types'
 import { Plus, Search, Edit, Trash2, Loader2, RefreshCw } from 'lucide-vue-next'
 import { getLoanProducts, deleteLoanProduct } from '@/services/modules/loanProduct.service'
 import type { LoanProduct } from '@/types/loan.types'
 import LoanProductModal from '../components/LoanProductModal.vue'
+
+const authStore = useAuthStore()
+const isAdmin = computed(() => authStore.user?.role === UserRole.ADMIN)
 
 const products = ref<LoanProduct[]>([])
 const isLoading = ref(false)
@@ -79,6 +84,7 @@ const formatCurrency = (value: number) => {
       </div>
       
       <button
+        v-if="isAdmin"
         type="button"
         @click="openAddModal"
         class="inline-flex items-center gap-2 rounded-md bg-[#4F1964] px-4 py-2 text-sm font-medium text-white hover:bg-[#380F47] transition-colors"
@@ -158,7 +164,7 @@ const formatCurrency = (value: number) => {
             <td class="px-4 py-4 text-[#166534] text-sm font-bold">{{ product.interestRate }}%</td>
             <td class="px-4 py-4 text-[#1A1A2E] text-sm">{{ product.repaymentDays }} Days</td>
             <td class="px-4 py-4 text-right">
-              <div class="flex items-center justify-end gap-3">
+              <div v-if="isAdmin" class="flex items-center justify-end gap-3">
                 <button @click="openEditModal(product)" class="text-[#4B4B6B] hover:text-[#4F1964] transition-colors">
                   <Edit class="w-4 h-4" />
                 </button>
@@ -166,6 +172,7 @@ const formatCurrency = (value: number) => {
                   <Trash2 class="w-4 h-4" />
                 </button>
               </div>
+              <span v-else class="text-[#9CA3AF] text-xs italic">View Only</span>
             </td>
           </tr>
         </tbody>

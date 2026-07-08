@@ -1,7 +1,8 @@
 export enum UserRole {
   LOAN_OFFICER = 'LoanOfficer',
   MANAGER = 'Manager',
-  ADMIN = 'Admin'
+  ADMIN = 'Admin',
+  COLLECTION_OFFICER = 'CollectionOfficer'
 }
 
 export interface User {

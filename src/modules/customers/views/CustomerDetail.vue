@@ -12,8 +12,11 @@ import {
   removeGuarantor,
   addReferee,
   removeReferee,
-  deleteCustomer
+  deleteCustomer,
+  payRegistrationFee
 } from '@/services/modules/customer.service'
+import { useAuthStore } from '@/stores/auth.store'
+import { UserRole } from '@/types/auth.types'
 import { getBranches } from '@/services/modules/branch.service'
 import { getLoans } from '@/services/modules/loan.service'
 import { getInteractions } from '@/services/modules/interaction.service'
@@ -24,6 +27,49 @@ import type { Interaction } from '@/services/modules/interaction.service'
 const router = useRouter()
 const route = useRoute()
 const customerId = route.params.id as string
+
+const authStore = useAuthStore()
+
+// Pay Registration Fee Modal State
+const showPayFeeModal = ref(false)
+const payFeeSaving = ref(false)
+const payFeeError = ref('')
+const payFeeForm = reactive({
+  amount: 500,
+  transactionCode: '',
+  mpesaRef: '',
+  payMethod: 0 // 0 = MobilePayment, 1 = Cash, 2 = Bank
+})
+
+const canPayRegistrationFee = computed(() => {
+  const allowedRoles = [UserRole.ADMIN, UserRole.MANAGER, UserRole.LOAN_OFFICER]
+  return allowedRoles.includes(authStore.user?.role ?? UserRole.LOAN_OFFICER)
+})
+
+const handlePayRegistrationFee = async () => {
+  payFeeError.value = ''
+  if (!payFeeForm.transactionCode.trim()) {
+    payFeeError.value = 'Please enter a transaction code / reference.'
+    return
+  }
+  payFeeSaving.value = true
+  try {
+    await payRegistrationFee(customerId, {
+      amount: 500,
+      transactionCode: payFeeForm.transactionCode.trim(),
+      mpesaRef: payFeeForm.transactionCode.trim(),
+      payMethod: Number(payFeeForm.payMethod)
+    })
+    showPayFeeModal.value = false
+    payFeeForm.transactionCode = ''
+    payFeeForm.payMethod = 0
+    await loadData()
+  } catch (err: any) {
+    payFeeError.value = err.response?.data?.error?.message || 'Failed to submit payment.'
+  } finally {
+    payFeeSaving.value = false
+  }
+}
 
 const activeTab = ref('bio')
 const customer = ref<CustomerDetails | null>(null)
@@ -68,7 +114,7 @@ const loadData = async () => {
 
     // 2. Fetch branch name
     try {
-      const branchesRes = await getBranches(1, 100)
+      const branchesRes = await getBranches({ page: 1, pageSize: 100 })
       const branch = branchesRes.items.find(b => b.id === data.branchId)
       if (branch) {
         branchName.value = branch.name
@@ -278,6 +324,26 @@ const tabs = [
         <div class="flex-1 w-full">
           <!-- Bio Info Tab Content -->
           <div v-if="activeTab === 'bio'" class="space-y-8">
+            <!-- Registration Fee Warning Banner -->
+            <div 
+              v-if="customer && !customer.registrationFeePaid && customer.status !== 'Active' && loans.length === 0"
+              class="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+            >
+              <div class="flex items-center gap-2">
+                <AlertCircle class="w-5 h-5 text-red-500 shrink-0" />
+                <div class="text-sm font-medium">
+                  This new customer must pay the member registration fee of 500 Ksh before applying for or receiving loans.
+                </div>
+              </div>
+              <button
+                v-if="canPayRegistrationFee"
+                type="button"
+                @click="showPayFeeModal = true"
+                class="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-md text-xs font-bold transition-colors shrink-0"
+              >
+                Pay Registration Fee (500 Ksh)
+              </button>
+            </div>
             <div class="flex flex-col sm:flex-row gap-6">
               <!-- Customer Photo -->
               <div class="w-40 shrink-0 mx-auto sm:mx-0">
@@ -361,6 +427,30 @@ const tabs = [
                     >
                       {{ customer.status }}
                     </span>
+                  </span>
+                </div>
+
+                <!-- Registration Fee Status -->
+                <div class="flex py-2 border-b border-[#F3F4F6] odd:bg-[#F8F7FA] even:bg-white rounded px-3 items-center">
+                  <span class="w-40 shrink-0 text-[#4B4B6B] text-sm font-medium">Registration Fee</span>
+                  <span class="flex-1 flex items-center justify-between gap-4">
+                    <span
+                      :class="[
+                        'px-2 py-0.5 rounded text-xs font-bold uppercase',
+                        (customer.registrationFeePaid || customer.status === 'Active') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      ]"
+                    >
+                      {{ (customer.registrationFeePaid || customer.status === 'Active') ? 'Paid' : 'Unpaid' }}
+                    </span>
+                    <button
+                      v-if="!customer.registrationFeePaid && customer.status !== 'Active' && loans.length === 0 && canPayRegistrationFee"
+                      type="button"
+                      @click="showPayFeeModal = true"
+                      class="bg-[#4F1964] hover:bg-[#380F47] text-white px-3 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-colors border border-transparent"
+                    >
+                      <CreditCard class="w-3.5 h-3.5" />
+                      Pay Registration Fee (500 Ksh)
+                    </button>
                   </span>
                 </div>
 
@@ -652,7 +742,14 @@ const tabs = [
               <MessageSquare class="w-10 h-10 text-[#9CA3AF]" />
             </div>
             <!-- Right Content -->
-            <div class="flex-1 w-full overflow-x-auto">
+            <div class="flex-1 w-full relative overflow-x-auto">
+              <button
+                @click="router.push(`/crm/interactions/new?customerId=${customerId}`)"
+                class="sm:absolute sm:top-0 sm:right-0 mb-4 sm:mb-0 bg-[#166534] hover:bg-[#14532D] text-white px-4 py-2 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors ml-auto"
+              >
+                <Plus class="w-4 h-4" />
+                Add Interaction
+              </button>
               <table class="w-full mt-2 min-w-[600px]">
                 <thead>
                   <tr class="border-b">
@@ -695,6 +792,50 @@ const tabs = [
     </div>
 
     <!-- Modals -->
+
+    <!-- Pay Registration Fee Modal -->
+    <div v-if="showPayFeeModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-lg shadow-xl max-w-md w-full border border-[#E5E0EA] overflow-hidden">
+        <div class="bg-[#F8F7FA] px-6 py-4 border-b flex justify-between items-center">
+          <h3 class="font-bold text-[#1A1A2E] text-base">Pay Member Registration Fee</h3>
+          <button @click="showPayFeeModal = false" class="text-gray-500 hover:text-gray-700">
+            <X class="w-5 h-5" />
+          </button>
+        </div>
+        <form @submit.prevent="handlePayRegistrationFee" class="p-6 space-y-4">
+          <p v-if="payFeeError" class="text-red-600 bg-red-50 border border-red-200 rounded p-2 text-xs flex items-center gap-1.5">
+            <AlertCircle class="w-4 h-4 shrink-0" />
+            <span>{{ payFeeError }}</span>
+          </p>
+
+          <div class="space-y-1">
+            <label class="text-xs font-semibold text-[#4B4B6B]">Amount (KES)</label>
+            <input type="text" value="500.00" disabled class="w-full px-3 py-2 border rounded-md text-sm bg-gray-100 text-gray-500 font-bold" />
+          </div>
+
+          <div class="space-y-1">
+            <label class="text-xs font-semibold text-[#4B4B6B]">Payment Method *</label>
+            <select v-model.number="payFeeForm.payMethod" required class="w-full px-3 py-2 border rounded-md text-sm outline-none focus:border-[#4F1964] bg-white">
+              <option :value="0">MobilePayment (MPESA)</option>
+              <option :value="1">Cash</option>
+              <option :value="2">Bank Transfer</option>
+            </select>
+          </div>
+
+          <div class="space-y-1">
+            <label class="text-xs font-semibold text-[#4B4B6B]">Transaction Code / MPESA Reference *</label>
+            <input v-model="payFeeForm.transactionCode" type="text" placeholder="e.g. M123XYZ" required class="w-full px-3 py-2 border rounded-md text-sm outline-none focus:border-[#4F1964]" />
+          </div>
+
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" @click="showPayFeeModal = false" class="px-4 py-2 border rounded text-sm text-[#4B4B6B] hover:bg-gray-50">Cancel</button>
+            <button type="submit" :disabled="payFeeSaving" class="bg-[#4F1964] hover:bg-[#380F47] text-white px-4 py-2 rounded text-sm font-semibold disabled:opacity-50">
+              {{ payFeeSaving ? 'Processing...' : 'Confirm Payment' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <!-- Add Guarantor Modal -->
     <div v-if="showGuarantorModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">

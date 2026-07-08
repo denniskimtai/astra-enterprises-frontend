@@ -16,10 +16,14 @@ import {
   CheckCircle,
   XCircle,
   Send,
-  X
+  X,
+  Trash2,
+  AlertCircle
 } from 'lucide-vue-next'
-import { getLoanById, approveLoan, rejectLoan, disburseLoan } from '@/services/modules/loan.service'
+import { getLoanById, approveLoan, rejectLoan, disburseLoan, deleteLoan } from '@/services/modules/loan.service'
 import type { Loan } from '@/types/loan.types'
+import { useAuthStore } from '@/stores/auth.store'
+import { UserRole } from '@/types/auth.types'
 
 const route = useRoute()
 const router = useRouter()
@@ -35,6 +39,91 @@ const goToLoanId = ref('')
 const isApproving = ref(false)
 const isRejecting = ref(false)
 const isDisbursing = ref(false)
+const isDeleting = ref(false)
+
+const authStore = useAuthStore()
+const currentRole = computed(() => authStore.user?.role ?? null)
+
+const canApprove = computed(() => {
+  if (!loan.value || loan.value.status !== 'Created') return false
+  
+  const role = currentRole.value
+  const stage = loan.value.stage
+  
+  if (role === UserRole.ADMIN) return true
+  if (role === UserRole.COLLECTION_OFFICER && stage === 'Initiation') return true
+  if (role === UserRole.MANAGER && stage === 'BranchApproval') return true
+  
+  return false
+})
+
+const canReject = computed(() => {
+  if (!loan.value || loan.value.status !== 'Created') return false
+  
+  const allowedRoles = [UserRole.ADMIN, UserRole.MANAGER, UserRole.COLLECTION_OFFICER]
+  return allowedRoles.includes(currentRole.value ?? UserRole.LOAN_OFFICER)
+})
+
+const canDisburse = computed(() => {
+  if (!loan.value || loan.value.status !== 'Approved') return false
+  if (loan.value.stage !== 'FinalApproval') return false
+  
+  const allowedRoles = [UserRole.ADMIN, UserRole.MANAGER, UserRole.LOAN_OFFICER]
+  return allowedRoles.includes(currentRole.value ?? UserRole.LOAN_OFFICER)
+})
+
+const canDelete = computed(() => {
+  const allowedRoles = [UserRole.ADMIN, UserRole.MANAGER]
+  return allowedRoles.includes(currentRole.value ?? UserRole.LOAN_OFFICER)
+})
+
+const handleDeleteLoan = async () => {
+  if (!confirm('Are you sure you want to delete this loan application? This cannot be undone.')) return
+  try {
+    isDeleting.value = true
+    await deleteLoan(loanId.value)
+    router.push('/loans/all')
+  } catch (e) {
+    console.error(e)
+    alert('Deletion failed.')
+  } finally {
+    isDeleting.value = false
+  }
+}
+
+// Schedules pagination
+const schedulePage = ref(1)
+const schedulePageSize = ref(10)
+
+const paginatedSchedules = computed(() => {
+  if (!loan.value || !loan.value.paySchedules) return []
+  const sorted = [...loan.value.paySchedules].sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+  
+  const start = (schedulePage.value - 1) * schedulePageSize.value
+  const end = start + schedulePageSize.value
+  return sorted.slice(start, end)
+})
+
+const scheduleTotalPages = computed(() => {
+  if (!loan.value || !loan.value.paySchedules) return 1
+  return Math.ceil(loan.value.paySchedules.length / schedulePageSize.value) || 1
+})
+
+const scheduleBreakdown = computed(() => {
+  if (!loan.value || !loan.value.paySchedules) return { paid: 0, unpaid: 0, overdue: 0 }
+  let paid = 0
+  let unpaid = 0
+  let overdue = 0
+  
+  loan.value.paySchedules.forEach(s => {
+    const status = s.status.toLowerCase()
+    if (status === 'repaid' || status === 'paid') paid++
+    else if (status === 'overdue') overdue++
+    else unpaid++
+  })
+  
+  return { paid, unpaid, overdue }
+})
 
 // Disburse Modal State
 const showDisburseModal = ref(false)
@@ -163,7 +252,7 @@ const handleDisburse = async () => {
         <div class="flex gap-2 items-center flex-wrap">
           <!-- Action Buttons based on state -->
           <button
-            v-if="loan.status === 'Created'"
+            v-if="canApprove"
             @click="handleApprove"
             :disabled="isApproving"
             class="inline-flex items-center gap-2 bg-[#166534] hover:bg-[#14532d] text-white px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
@@ -173,7 +262,7 @@ const handleDisburse = async () => {
           </button>
           
           <button
-            v-if="loan.status === 'Created'"
+            v-if="canReject"
             @click="handleReject"
             :disabled="isRejecting"
             class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
@@ -183,11 +272,21 @@ const handleDisburse = async () => {
           </button>
           
           <button
-            v-if="loan.status === 'Approved'"
+            v-if="canDisburse"
             @click="showDisburseModal = true"
             class="inline-flex items-center gap-2 bg-[#4F1964] hover:bg-[#380F47] text-white px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
           >
             <Send class="w-4 h-4" /> Disburse
+          </button>
+
+          <button
+            v-if="canDelete"
+            @click="handleDeleteLoan"
+            :disabled="isDeleting"
+            class="inline-flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 px-4 py-1.5 rounded-md text-sm font-medium transition-colors border border-red-200"
+          >
+            <Loader2 v-if="isDeleting" class="w-4 h-4 animate-spin" />
+            <Trash2 v-else class="w-4 h-4" /> Delete Loan
           </button>
 
           <div class="h-6 w-px bg-[#E5E0EA] mx-2"></div>
@@ -213,6 +312,68 @@ const handleDisburse = async () => {
           >
             <ArrowRight class="w-4 h-4" />
           </button>
+        </div>
+      </div>
+
+      <!-- Stepper / Status Bar -->
+      <div class="mx-6 my-4 p-4 rounded-lg bg-gray-50 border border-[#E5E0EA]">
+        <h3 class="text-xs uppercase tracking-widest text-[#4B4B6B] font-semibold mb-3">Approval Progress Tracker</h3>
+        <div class="flex items-center w-full max-w-3xl mx-auto flex-col sm:flex-row gap-4 sm:gap-2">
+          <!-- Step 1: Initiation -->
+          <div class="flex-1 flex items-center justify-between w-full">
+            <div class="flex items-center gap-2">
+              <div 
+                class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors"
+                :class="loan.stage === 'Initiation' 
+                  ? 'bg-[#4F1964] text-white ring-4 ring-[#EDE9F5]' 
+                  : 'bg-green-600 text-white'"
+              >
+                <span v-if="loan.stage === 'Initiation'">1</span>
+                <span v-else>✓</span>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-[#1A1A2E]">Initiation</p>
+                <p class="text-xs text-[#9CA3AF]">Loan Entered</p>
+              </div>
+            </div>
+            <div class="hidden sm:block flex-1 h-0.5 bg-gray-200 mx-4" :class="loan.stage !== 'Initiation' ? 'bg-green-600' : ''"></div>
+          </div>
+
+          <!-- Step 2: Branch Approval -->
+          <div class="flex-1 flex items-center justify-between w-full">
+            <div class="flex items-center gap-2">
+              <div 
+                class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors"
+                :class="loan.stage === 'BranchApproval' 
+                  ? 'bg-[#4F1964] text-white ring-4 ring-[#EDE9F5]' 
+                  : (loan.stage === 'FinalApproval' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-500')"
+              >
+                <span v-if="loan.stage === 'FinalApproval'">✓</span>
+                <span v-else>2</span>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-[#1A1A2E]">Branch Approval</p>
+                <p class="text-xs text-[#9CA3AF]">Branch Manager Review</p>
+              </div>
+            </div>
+            <div class="hidden sm:block flex-1 h-0.5 bg-gray-200 mx-4" :class="loan.stage === 'FinalApproval' ? 'bg-green-600' : ''"></div>
+          </div>
+
+          <!-- Step 3: Final Approval -->
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <div 
+              class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors"
+              :class="loan.stage === 'FinalApproval' 
+                ? 'bg-[#4F1964] text-white ring-4 ring-[#EDE9F5]' 
+                : 'bg-gray-200 text-gray-500'"
+            >
+              <span>3</span>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-[#1A1A2E]">Final Approval</p>
+              <p class="text-xs text-[#9CA3AF]">Direct Admin Release</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -393,30 +554,84 @@ const handleDisburse = async () => {
         </div>
 
         <!-- Pay Schedule Tab -->
-        <div v-else-if="activeTab === 'pay-schedule'" class="space-y-4">
-          <div v-if="loan.paySchedules && loan.paySchedules.length > 0" class="overflow-x-auto rounded-lg border border-[#E5E0EA]">
-            <table class="min-w-full text-sm">
-              <thead class="bg-[#F8F7FA]">
-                <tr>
-                  <th class="px-4 py-3 text-left font-semibold text-[#4B4B6B]">Due Date</th>
-                  <th class="px-4 py-3 text-left font-semibold text-[#4B4B6B]">Amount Due</th>
-                  <th class="px-4 py-3 text-left font-semibold text-[#4B4B6B]">Amount Paid</th>
-                  <th class="px-4 py-3 text-left font-semibold text-[#4B4B6B]">Balance</th>
-                  <th class="px-4 py-3 text-left font-semibold text-[#4B4B6B]">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="sched in loan.paySchedules" :key="sched.id" class="border-t border-[#E5E0EA] bg-white">
-                  <td class="px-4 py-3 font-medium text-[#1A1A2E]">{{ formatDate(sched.dueDate) }}</td>
-                  <td class="px-4 py-3 text-[#1A1A2E]">{{ formatCurrency(sched.amountDue) }}</td>
-                  <td class="px-4 py-3 text-[#166534]">{{ formatCurrency(sched.amountPaid) }}</td>
-                  <td class="px-4 py-3 text-[#E8604A] font-medium">{{ formatCurrency(sched.balance) }}</td>
-                  <td class="px-4 py-3">
-                    <span class="px-2 py-0.5 rounded-sm text-xs font-bold" :class="sched.status === 'Repaid' || sched.status === 'Paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'">{{ sched.status }}</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+        <div v-else-if="activeTab === 'pay-schedule'" class="space-y-6">
+          <!-- Schedules Breakdown Card -->
+          <div class="grid grid-cols-3 gap-4">
+            <div class="p-4 rounded-lg bg-green-50 border border-green-100">
+              <span class="text-xs text-green-800 font-semibold uppercase">Paid</span>
+              <p class="text-2xl font-bold text-green-900 mt-1">{{ scheduleBreakdown.paid }}</p>
+            </div>
+            <div class="p-4 rounded-lg bg-yellow-50 border border-yellow-100">
+              <span class="text-xs text-yellow-800 font-semibold uppercase">Unpaid</span>
+              <p class="text-2xl font-bold text-yellow-900 mt-1">{{ scheduleBreakdown.unpaid }}</p>
+            </div>
+            <div class="p-4 rounded-lg bg-red-50 border border-red-100">
+              <span class="text-xs text-red-800 font-semibold uppercase">Overdue</span>
+              <p class="text-2xl font-bold text-red-900 mt-1">{{ scheduleBreakdown.overdue }}</p>
+            </div>
+          </div>
+
+          <div v-if="paginatedSchedules.length > 0" class="space-y-4">
+            <div class="overflow-x-auto rounded-lg border border-[#E5E0EA]">
+              <table class="min-w-full text-sm">
+                <thead class="bg-[#F8F7FA]">
+                  <tr>
+                    <th class="px-4 py-3 text-left font-semibold text-[#4B4B6B]">Installment #</th>
+                    <th class="px-4 py-3 text-left font-semibold text-[#4B4B6B]">Due Date</th>
+                    <th class="px-4 py-3 text-left font-semibold text-[#4B4B6B]">Amount Due</th>
+                    <th class="px-4 py-3 text-left font-semibold text-[#4B4B6B]">Amount Paid</th>
+                    <th class="px-4 py-3 text-left font-semibold text-[#4B4B6B]">Balance</th>
+                    <th class="px-4 py-3 text-left font-semibold text-[#4B4B6B]">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(sched, index) in paginatedSchedules" :key="sched.id" class="border-t border-[#E5E0EA] bg-white">
+                    <td class="px-4 py-3 font-semibold text-[#1A1A2E]">
+                      Installment #{{ (schedulePage - 1) * schedulePageSize + index + 1 }}
+                    </td>
+                    <td class="px-4 py-3 text-[#1A1A2E]">{{ formatDate(sched.dueDate) }}</td>
+                    <td class="px-4 py-3 font-bold text-[#1A1A2E]">{{ formatCurrency(sched.amountDue) }}</td>
+                    <td class="px-4 py-3 text-[#166534] font-medium">{{ formatCurrency(sched.amountPaid) }}</td>
+                    <td class="px-4 py-3 text-[#E8604A] font-semibold">{{ formatCurrency(sched.balance) }}</td>
+                    <td class="px-4 py-3">
+                      <span 
+                        class="px-2 py-0.5 rounded-sm text-xs font-bold" 
+                        :class="sched.status.toLowerCase() === 'repaid' || sched.status.toLowerCase() === 'paid' 
+                          ? 'bg-green-100 text-green-800' 
+                          : (sched.status.toLowerCase() === 'overdue' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800')"
+                      >
+                        {{ sched.status }}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Schedules Pagination Controls -->
+            <div class="flex items-center justify-between border border-[#E5E0EA] rounded-lg p-3 bg-[#F8F7FA]">
+              <span class="text-xs text-[#4B4B6B]">
+                Page {{ schedulePage }} of {{ scheduleTotalPages }} (Total {{ loan.paySchedules.length }} installments)
+              </span>
+              <div class="flex gap-2">
+                <button 
+                  type="button"
+                  :disabled="schedulePage === 1"
+                  @click="schedulePage--"
+                  class="px-3 py-1 text-xs border border-[#E5E0EA] rounded-md bg-white disabled:opacity-40 hover:border-primary transition-colors text-[#4B4B6B]"
+                >
+                  Previous
+                </button>
+                <button 
+                  type="button"
+                  :disabled="schedulePage >= scheduleTotalPages"
+                  @click="schedulePage++"
+                  class="px-3 py-1 text-xs border border-[#E5E0EA] rounded-md bg-white disabled:opacity-40 hover:border-primary transition-colors text-[#4B4B6B]"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
           </div>
           <p v-else class="text-sm text-[#9CA3AF] italic p-6 text-center border border-[#E5E0EA] rounded-lg bg-gray-50">No Pay Schedule generated yet.</p>
         </div>

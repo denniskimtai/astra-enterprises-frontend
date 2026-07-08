@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, reactive, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { getBranches, type Branch } from '@/services/modules/branch.service'
+import { getBranches } from '@/services/modules/branch.service'
+import type { BranchResponse } from '@/types/branch.types'
 import { createCustomer } from '@/services/modules/customer.service'
 import { MaritalStatus, HomeOwnership, type CreateCustomerPayload } from '@/types/customer.types'
 import { Info, User, Building, Home, Users, Check, AlertCircle } from 'lucide-vue-next'
@@ -19,13 +20,13 @@ const tabs = [
 const activeTab = ref('primary')
 
 // Load branches
-const branches = ref<Branch[]>([])
+const branches = ref<BranchResponse[]>([])
 const loadingBranches = ref(false)
 
 onMounted(async () => {
   loadingBranches.value = true
   try {
-    const res = await getBranches(1, 100)
+    const res = await getBranches({ page: 1, pageSize: 100 })
     branches.value = res.items
   } catch (err) {
     console.error('Failed to load branches:', err)
@@ -127,23 +128,144 @@ const removeReferee = (index: number) => {
 // Errors and saving
 const errors = ref<string[]>([])
 const saving = ref(false)
+const valErrors = reactive<Record<string, string>>({})
+
+const validateTab = (tabId: string): boolean => {
+  if (tabId === 'primary') {
+    delete valErrors.fullName
+    delete valErrors.nationalId
+    delete valErrors.phone
+    delete valErrors.branchId
+    delete valErrors.town
+    delete valErrors.county
+    delete valErrors.postalAddress
+    delete valErrors.physicalAddress
+
+    if (!primaryForm.fullName.trim()) valErrors.fullName = 'Full name is required.'
+    if (!primaryForm.nationalId.trim()) valErrors.nationalId = 'National ID is required.'
+    if (!primaryForm.phone.trim()) valErrors.phone = 'Phone number is required.'
+    if (!primaryForm.branchId) valErrors.branchId = 'Please select a branch.'
+    if (!primaryForm.town.trim()) valErrors.town = 'Town is required.'
+    if (!primaryForm.county.trim()) valErrors.county = 'County is required.'
+    if (!primaryForm.postalAddress.trim()) valErrors.postalAddress = 'Postal address is required.'
+    if (!primaryForm.physicalAddress.trim()) valErrors.physicalAddress = 'Physical address description is required.'
+  } else if (tabId === 'business') {
+    delete valErrors.businessName
+    delete valErrors.businessType
+    if (businessForm.hasInfo) {
+      if (!businessForm.businessName.trim()) valErrors.businessName = 'Business name is required.'
+      if (!businessForm.businessType.trim()) valErrors.businessType = 'Business type is required.'
+    }
+  } else if (tabId === 'secondary') {
+    delete valErrors.rentAmount
+    if (secondaryForm.hasInfo && secondaryForm.ownership === HomeOwnership.RENTED) {
+      if (secondaryForm.rentAmount === null || secondaryForm.rentAmount <= 0) {
+        valErrors.rentAmount = 'Monthly rent amount must be a positive number.'
+      }
+    }
+  } else if (tabId === 'guarantors_referees') {
+    delete valErrors.guarantors
+    delete valErrors.referees
+
+    let guarantorErr = false
+    guarantors.value.forEach(g => {
+      if (!g.name.trim() || !g.idNumber.trim() || !g.phone.trim() || g.amountGuaranteed <= 0 || !g.relationship.trim()) {
+        guarantorErr = true
+      }
+    })
+    if (guarantorErr) {
+      valErrors.guarantors = 'Please fill all fields for the added guarantors with valid information.'
+    }
+
+    let refereeErr = false
+    referees.value.forEach(r => {
+      if (!r.name.trim() || !r.phone.trim() || !r.physicalAddress.trim() || !r.relationship.trim()) {
+        refereeErr = true
+      }
+    })
+    if (refereeErr) {
+      valErrors.referees = 'Please fill all fields for the added referees with valid information.'
+    }
+  }
+
+  const tabFields = {
+    primary: ['fullName', 'nationalId', 'phone', 'branchId', 'town', 'county', 'postalAddress', 'physicalAddress'],
+    business: ['businessName', 'businessType'],
+    secondary: ['rentAmount'],
+    guarantors_referees: ['guarantors', 'referees']
+  }[tabId] || []
+
+  return !tabFields.some(field => !!valErrors[field])
+}
+
+const handleTabClick = (tabId: string) => {
+  const currentIndex = tabs.findIndex(t => t.id === activeTab.value)
+  const targetIndex = tabs.findIndex(t => t.id === tabId)
+  
+  if (targetIndex > currentIndex) {
+    for (let i = currentIndex; i < targetIndex; i++) {
+      const stepTabId = tabs[i].id
+      if (!validateTab(stepTabId)) {
+        activeTab.value = stepTabId
+        errors.value = Object.values(valErrors)
+        return
+      }
+    }
+  }
+  
+  errors.value = []
+  activeTab.value = tabId
+}
+
+const handleNextStep = () => {
+  const currentIndex = tabs.findIndex(t => t.id === activeTab.value)
+  if (currentIndex === -1 || currentIndex === tabs.length - 1) return
+  
+  if (validateTab(activeTab.value)) {
+    activeTab.value = tabs[currentIndex + 1].id
+    errors.value = []
+  } else {
+    errors.value = Object.values(valErrors)
+  }
+}
+
+watch(() => primaryForm.fullName, (val) => { if (val.trim()) delete valErrors.fullName })
+watch(() => primaryForm.nationalId, (val) => { if (val.trim()) delete valErrors.nationalId })
+watch(() => primaryForm.phone, (val) => { if (val.trim()) delete valErrors.phone })
+watch(() => primaryForm.branchId, (val) => { if (val) delete valErrors.branchId })
+watch(() => primaryForm.town, (val) => { if (val.trim()) delete valErrors.town })
+watch(() => primaryForm.county, (val) => { if (val.trim()) delete valErrors.county })
+watch(() => primaryForm.postalAddress, (val) => { if (val.trim()) delete valErrors.postalAddress })
+watch(() => primaryForm.physicalAddress, (val) => { if (val.trim()) delete valErrors.physicalAddress })
+watch(() => businessForm.businessName, (val) => { if (val.trim()) delete valErrors.businessName })
+watch(() => businessForm.businessType, (val) => { if (val.trim()) delete valErrors.businessType })
+watch(() => secondaryForm.rentAmount, (val) => { if (val !== null && val > 0) delete valErrors.rentAmount })
 
 const validateForm = (): boolean => {
   errors.value = []
-  if (!primaryForm.fullName.trim()) errors.value.push('Full name is required.')
-  if (!primaryForm.nationalId.trim()) errors.value.push('National ID is required.')
-  if (!primaryForm.phone.trim()) errors.value.push('Phone number is required.')
-  if (!primaryForm.physicalAddress.trim()) errors.value.push('Physical address is required.')
-  if (!primaryForm.town.trim()) errors.value.push('Town is required.')
-  if (!primaryForm.county.trim()) errors.value.push('County is required.')
-  if (!primaryForm.branchId) errors.value.push('Please select a branch.')
   
-  return errors.value.length === 0
+  const isPrimaryValid = validateTab('primary')
+  const isBusinessValid = validateTab('business')
+  const isSecondaryValid = validateTab('secondary')
+  const isGuarantorsRefereesValid = validateTab('guarantors_referees')
+  
+  if (!isPrimaryValid || !isBusinessValid || !isSecondaryValid || !isGuarantorsRefereesValid) {
+    errors.value = Object.values(valErrors)
+    
+    // Switch to the first tab that has an error
+    if (!isPrimaryValid) activeTab.value = 'primary'
+    else if (!isBusinessValid) activeTab.value = 'business'
+    else if (!isSecondaryValid) activeTab.value = 'secondary'
+    else if (!isGuarantorsRefereesValid) activeTab.value = 'guarantors_referees'
+    
+    return false
+  }
+  
+  return true
 }
 
 const submitForm = async () => {
   if (!validateForm()) {
-    activeTab.value = 'primary'
     return
   }
 
@@ -241,7 +363,7 @@ const submitForm = async () => {
               ? 'text-[#4F1964] border-[#4F1964] bg-white font-semibold'
               : 'text-[#4B4B6B] border-transparent hover:bg-white/50 hover:text-[#4F1964]'
           ]"
-          @click="activeTab = tab.id"
+          @click="handleTabClick(tab.id)"
         >
           <component :is="tab.icon" class="w-4 h-4" />
           {{ tab.label }}
@@ -257,56 +379,129 @@ const submitForm = async () => {
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="space-y-1.5">
               <label class="block text-sm font-medium text-[#4B4B6B]">Full Name *</label>
-              <input v-model="primaryForm.fullName" type="text" required class="w-full px-4 py-2 border rounded-md outline-none focus:border-[#4F1964]" />
+              <input 
+                v-model="primaryForm.fullName" 
+                type="text" 
+                required 
+                :class="[
+                  'w-full px-4 py-2 border rounded-md outline-none focus:border-[#4F1964]',
+                  valErrors.fullName ? 'border-red-500 focus:border-red-500' : 'border-[#E5E0EA]'
+                ]" 
+              />
+              <p v-if="valErrors.fullName" class="text-xs text-red-500 mt-1">{{ valErrors.fullName }}</p>
             </div>
 
             <div class="space-y-1.5">
               <label class="block text-sm font-medium text-[#4B4B6B]">National ID / Passport Number *</label>
-              <input v-model="primaryForm.nationalId" type="text" required class="w-full px-4 py-2 border rounded-md outline-none focus:border-[#4F1964]" />
+              <input 
+                v-model="primaryForm.nationalId" 
+                type="text" 
+                required 
+                :class="[
+                  'w-full px-4 py-2 border rounded-md outline-none focus:border-[#4F1964]',
+                  valErrors.nationalId ? 'border-red-500 focus:border-red-500' : 'border-[#E5E0EA]'
+                ]" 
+              />
+              <p v-if="valErrors.nationalId" class="text-xs text-red-500 mt-1">{{ valErrors.nationalId }}</p>
             </div>
 
             <div class="space-y-1.5">
               <label class="block text-sm font-medium text-[#4B4B6B]">Phone Number (Mobile) *</label>
-              <input v-model="primaryForm.phone" type="tel" placeholder="+254..." required class="w-full px-4 py-2 border rounded-md outline-none focus:border-[#4F1964]" />
+              <input 
+                v-model="primaryForm.phone" 
+                type="tel" 
+                placeholder="+254..." 
+                required 
+                :class="[
+                  'w-full px-4 py-2 border rounded-md outline-none focus:border-[#4F1964]',
+                  valErrors.phone ? 'border-red-500 focus:border-red-500' : 'border-[#E5E0EA]'
+                ]" 
+              />
+              <p v-if="valErrors.phone" class="text-xs text-red-500 mt-1">{{ valErrors.phone }}</p>
             </div>
 
             <div class="space-y-1.5">
               <label class="block text-sm font-medium text-[#4B4B6B]">Branch *</label>
-              <select v-model="primaryForm.branchId" required class="w-full px-4 py-2 border rounded-md outline-none bg-white focus:border-[#4F1964]">
+              <select 
+                v-model="primaryForm.branchId" 
+                required 
+                :class="[
+                  'w-full px-4 py-2 border rounded-md outline-none bg-white focus:border-[#4F1964]',
+                  valErrors.branchId ? 'border-red-500 focus:border-red-500' : 'border-[#E5E0EA]'
+                ]"
+              >
                 <option value="">Select branch...</option>
                 <option v-for="b in branches" :key="b.id" :value="b.id">{{ b.name }} ({{ b.location }})</option>
               </select>
+              <p v-if="valErrors.branchId" class="text-xs text-red-500 mt-1">{{ valErrors.branchId }}</p>
             </div>
 
             <div class="space-y-1.5">
               <label class="block text-sm font-medium text-[#4B4B6B]">Town *</label>
-              <input v-model="primaryForm.town" type="text" required class="w-full px-4 py-2 border rounded-md outline-none focus:border-[#4F1964]" />
+              <input 
+                v-model="primaryForm.town" 
+                type="text" 
+                required 
+                :class="[
+                  'w-full px-4 py-2 border rounded-md outline-none focus:border-[#4F1964]',
+                  valErrors.town ? 'border-red-500 focus:border-red-500' : 'border-[#E5E0EA]'
+                ]" 
+              />
+              <p v-if="valErrors.town" class="text-xs text-red-500 mt-1">{{ valErrors.town }}</p>
             </div>
 
             <div class="space-y-1.5">
               <label class="block text-sm font-medium text-[#4B4B6B]">County *</label>
-              <input v-model="primaryForm.county" type="text" required class="w-full px-4 py-2 border rounded-md outline-none focus:border-[#4F1964]" />
+              <input 
+                v-model="primaryForm.county" 
+                type="text" 
+                required 
+                :class="[
+                  'w-full px-4 py-2 border rounded-md outline-none focus:border-[#4F1964]',
+                  valErrors.county ? 'border-red-500 focus:border-red-500' : 'border-[#E5E0EA]'
+                ]" 
+              />
+              <p v-if="valErrors.county" class="text-xs text-red-500 mt-1">{{ valErrors.county }}</p>
             </div>
 
             <div class="space-y-1.5">
               <label class="block text-sm font-medium text-[#4B4B6B]">Postal Address *</label>
-              <input v-model="primaryForm.postalAddress" type="text" placeholder="P.O. Box 100-00100" required class="w-full px-4 py-2 border rounded-md outline-none focus:border-[#4F1964]" />
+              <input 
+                v-model="primaryForm.postalAddress" 
+                type="text" 
+                placeholder="P.O. Box 100-00100" 
+                required 
+                :class="[
+                  'w-full px-4 py-2 border rounded-md outline-none focus:border-[#4F1964]',
+                  valErrors.postalAddress ? 'border-red-500 focus:border-red-500' : 'border-[#E5E0EA]'
+                ]" 
+              />
+              <p v-if="valErrors.postalAddress" class="text-xs text-red-500 mt-1">{{ valErrors.postalAddress }}</p>
             </div>
 
             <div class="space-y-1.5">
               <label class="block text-sm font-medium text-[#4B4B6B]">Location Geo Coordinates</label>
-              <input v-model="primaryForm.homeGeoLocation" type="text" placeholder="-1.3005, 36.7850" class="w-full px-4 py-2 border rounded-md outline-none focus:border-[#4F1964]" />
+              <input v-model="primaryForm.homeGeoLocation" type="text" placeholder="-1.3005, 36.7850" class="w-full px-4 py-2 border border-[#E5E0EA] rounded-md outline-none focus:border-[#4F1964]" />
             </div>
           </div>
 
           <div class="space-y-1.5">
             <label class="block text-sm font-medium text-[#4B4B6B]">Physical Address Description *</label>
-            <textarea v-model="primaryForm.physicalAddress" required rows="3" class="w-full px-4 py-2 border rounded-md outline-none focus:border-[#4F1964]"></textarea>
+            <textarea 
+              v-model="primaryForm.physicalAddress" 
+              required 
+              rows="3" 
+              :class="[
+                'w-full px-4 py-2 border rounded-md outline-none focus:border-[#4F1964]',
+                valErrors.physicalAddress ? 'border-red-500 focus:border-red-500' : 'border-[#E5E0EA]'
+              ]"
+            ></textarea>
+            <p v-if="valErrors.physicalAddress" class="text-xs text-red-500 mt-1">{{ valErrors.physicalAddress }}</p>
           </div>
 
           <div class="space-y-1.5">
             <label class="block text-sm font-medium text-[#4B4B6B]">Photo URL</label>
-            <input v-model="primaryForm.photoUrl" type="text" class="w-full px-4 py-2 border rounded-md outline-none focus:border-[#4F1964]" />
+            <input v-model="primaryForm.photoUrl" type="text" class="w-full px-4 py-2 border border-[#E5E0EA] rounded-md outline-none focus:border-[#4F1964]" />
           </div>
         </div>
 
@@ -319,13 +514,30 @@ const submitForm = async () => {
 
           <div v-if="businessForm.hasInfo" class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
             <div class="space-y-1.5">
-              <label class="block text-sm font-medium text-[#4B4B6B]">Business Name</label>
-              <input v-model="businessForm.businessName" type="text" class="w-full px-4 py-2 border rounded-md outline-none" />
+              <label class="block text-sm font-medium text-[#4B4B6B]">Business Name *</label>
+              <input 
+                v-model="businessForm.businessName" 
+                type="text" 
+                :class="[
+                  'w-full px-4 py-2 border rounded-md outline-none focus:border-[#4F1964]',
+                  valErrors.businessName ? 'border-red-500 focus:border-red-500' : 'border-[#E5E0EA]'
+                ]" 
+              />
+              <p v-if="valErrors.businessName" class="text-xs text-red-500 mt-1">{{ valErrors.businessName }}</p>
             </div>
 
             <div class="space-y-1.5">
-              <label class="block text-sm font-medium text-[#4B4B6B]">Business Type</label>
-              <input v-model="businessForm.businessType" type="text" placeholder="e.g. Retail Shop" class="w-full px-4 py-2 border rounded-md" />
+              <label class="block text-sm font-medium text-[#4B4B6B]">Business Type *</label>
+              <input 
+                v-model="businessForm.businessType" 
+                type="text" 
+                placeholder="e.g. Retail Shop" 
+                :class="[
+                  'w-full px-4 py-2 border rounded-md outline-none focus:border-[#4F1964]',
+                  valErrors.businessType ? 'border-red-500 focus:border-red-500' : 'border-[#E5E0EA]'
+                ]" 
+              />
+              <p v-if="valErrors.businessType" class="text-xs text-red-500 mt-1">{{ valErrors.businessType }}</p>
             </div>
 
             <div class="space-y-1.5">
@@ -439,8 +651,17 @@ const submitForm = async () => {
             </div>
 
             <div class="space-y-1.5" v-if="secondaryForm.ownership === HomeOwnership.RENTED">
-              <label class="block text-sm font-medium text-[#4B4B6B]">Monthly Rent Amount (KES)</label>
-              <input v-model.number="secondaryForm.rentAmount" type="number" min="0" class="w-full px-4 py-2 border rounded-md" />
+              <label class="block text-sm font-medium text-[#4B4B6B]">Monthly Rent Amount (KES) *</label>
+              <input 
+                v-model.number="secondaryForm.rentAmount" 
+                type="number" 
+                min="0" 
+                :class="[
+                  'w-full px-4 py-2 border rounded-md outline-none focus:border-[#4F1964]',
+                  valErrors.rentAmount ? 'border-red-500 focus:border-red-500' : 'border-[#E5E0EA]'
+                ]" 
+              />
+              <p v-if="valErrors.rentAmount" class="text-xs text-red-500 mt-1">{{ valErrors.rentAmount }}</p>
             </div>
 
             <div class="space-y-1.5">
@@ -480,6 +701,8 @@ const submitForm = async () => {
               </button>
             </div>
 
+            <p v-if="valErrors.guarantors" class="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2.5 mb-2">{{ valErrors.guarantors }}</p>
+
             <div v-if="guarantors.length === 0" class="text-sm text-[#9CA3AF] text-center py-4 bg-[#F8F7FA] rounded-md border border-dashed">
               No guarantors added yet.
             </div>
@@ -499,24 +722,60 @@ const submitForm = async () => {
 
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div class="space-y-1">
-                  <label class="text-xs font-medium text-[#4B4B6B]">Guarantor Name</label>
-                  <input v-model="guarantor.name" type="text" class="w-full px-3 py-1.5 text-xs border rounded-md" />
+                  <label class="text-xs font-medium text-[#4B4B6B]">Guarantor Name *</label>
+                  <input 
+                    v-model="guarantor.name" 
+                    type="text" 
+                    :class="[
+                      'w-full px-3 py-1.5 text-xs border rounded-md outline-none focus:border-[#4F1964]',
+                      !guarantor.name.trim() && valErrors.guarantors ? 'border-red-500' : 'border-[#E5E0EA]'
+                    ]" 
+                  />
                 </div>
                 <div class="space-y-1">
-                  <label class="text-xs font-medium text-[#4B4B6B]">Guarantor ID Number</label>
-                  <input v-model="guarantor.idNumber" type="text" class="w-full px-3 py-1.5 text-xs border rounded-md" />
+                  <label class="text-xs font-medium text-[#4B4B6B]">Guarantor ID Number *</label>
+                  <input 
+                    v-model="guarantor.idNumber" 
+                    type="text" 
+                    :class="[
+                      'w-full px-3 py-1.5 text-xs border rounded-md outline-none focus:border-[#4F1964]',
+                      !guarantor.idNumber.trim() && valErrors.guarantors ? 'border-red-500' : 'border-[#E5E0EA]'
+                    ]" 
+                  />
                 </div>
                 <div class="space-y-1">
-                  <label class="text-xs font-medium text-[#4B4B6B]">Guarantor Phone</label>
-                  <input v-model="guarantor.phone" type="tel" class="w-full px-3 py-1.5 text-xs border rounded-md" />
+                  <label class="text-xs font-medium text-[#4B4B6B]">Guarantor Phone *</label>
+                  <input 
+                    v-model="guarantor.phone" 
+                    type="tel" 
+                    :class="[
+                      'w-full px-3 py-1.5 text-xs border rounded-md outline-none focus:border-[#4F1964]',
+                      !guarantor.phone.trim() && valErrors.guarantors ? 'border-red-500' : 'border-[#E5E0EA]'
+                    ]" 
+                  />
                 </div>
                 <div class="space-y-1">
-                  <label class="text-xs font-medium text-[#4B4B6B]">Guaranteed Amount (KES)</label>
-                  <input v-model.number="guarantor.amountGuaranteed" type="number" min="0" class="w-full px-3 py-1.5 text-xs border rounded-md" />
+                  <label class="text-xs font-medium text-[#4B4B6B]">Guaranteed Amount (KES) *</label>
+                  <input 
+                    v-model.number="guarantor.amountGuaranteed" 
+                    type="number" 
+                    min="0" 
+                    :class="[
+                      'w-full px-3 py-1.5 text-xs border rounded-md outline-none focus:border-[#4F1964]',
+                      guarantor.amountGuaranteed <= 0 && valErrors.guarantors ? 'border-red-500' : 'border-[#E5E0EA]'
+                    ]" 
+                  />
                 </div>
                 <div class="space-y-1">
-                  <label class="text-xs font-medium text-[#4B4B6B]">Relationship</label>
-                  <input v-model="guarantor.relationship" type="text" class="w-full px-3 py-1.5 text-xs border rounded-md" />
+                  <label class="text-xs font-medium text-[#4B4B6B]">Relationship *</label>
+                  <input 
+                    v-model="guarantor.relationship" 
+                    type="text" 
+                    :class="[
+                      'w-full px-3 py-1.5 text-xs border rounded-md outline-none focus:border-[#4F1964]',
+                      !guarantor.relationship.trim() && valErrors.guarantors ? 'border-red-500' : 'border-[#E5E0EA]'
+                    ]" 
+                  />
                 </div>
               </div>
             </div>
@@ -534,6 +793,8 @@ const submitForm = async () => {
                 + Add Referee
               </button>
             </div>
+
+            <p v-if="valErrors.referees" class="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2.5 mb-2">{{ valErrors.referees }}</p>
 
             <div v-if="referees.length === 0" class="text-sm text-[#9CA3AF] text-center py-4 bg-[#F8F7FA] rounded-md border border-dashed">
               No referees added yet.
@@ -554,20 +815,48 @@ const submitForm = async () => {
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div class="space-y-1">
-                  <label class="text-xs font-medium text-[#4B4B6B]">Referee Name</label>
-                  <input v-model="referee.name" type="text" class="w-full px-3 py-1.5 text-xs border rounded-md" />
+                  <label class="text-xs font-medium text-[#4B4B6B]">Referee Name *</label>
+                  <input 
+                    v-model="referee.name" 
+                    type="text" 
+                    :class="[
+                      'w-full px-3 py-1.5 text-xs border rounded-md outline-none focus:border-[#4F1964]',
+                      !referee.name.trim() && valErrors.referees ? 'border-red-500' : 'border-[#E5E0EA]'
+                    ]" 
+                  />
                 </div>
                 <div class="space-y-1">
-                  <label class="text-xs font-medium text-[#4B4B6B]">Referee Phone</label>
-                  <input v-model="referee.phone" type="tel" class="w-full px-3 py-1.5 text-xs border rounded-md" />
+                  <label class="text-xs font-medium text-[#4B4B6B]">Referee Phone *</label>
+                  <input 
+                    v-model="referee.phone" 
+                    type="tel" 
+                    :class="[
+                      'w-full px-3 py-1.5 text-xs border rounded-md outline-none focus:border-[#4F1964]',
+                      !referee.phone.trim() && valErrors.referees ? 'border-red-500' : 'border-[#E5E0EA]'
+                    ]" 
+                  />
                 </div>
                 <div class="space-y-1 md:col-span-2">
-                  <label class="text-xs font-medium text-[#4B4B6B]">Referee Physical Address</label>
-                  <input v-model="referee.physicalAddress" type="text" class="w-full px-3 py-1.5 text-xs border rounded-md" />
+                  <label class="text-xs font-medium text-[#4B4B6B]">Referee Physical Address *</label>
+                  <input 
+                    v-model="referee.physicalAddress" 
+                    type="text" 
+                    :class="[
+                      'w-full px-3 py-1.5 text-xs border rounded-md outline-none focus:border-[#4F1964]',
+                      !referee.physicalAddress.trim() && valErrors.referees ? 'border-red-500' : 'border-[#E5E0EA]'
+                    ]" 
+                  />
                 </div>
                 <div class="space-y-1">
-                  <label class="text-xs font-medium text-[#4B4B6B]">Relationship</label>
-                  <input v-model="referee.relationship" type="text" class="w-full px-3 py-1.5 text-xs border rounded-md" />
+                  <label class="text-xs font-medium text-[#4B4B6B]">Relationship *</label>
+                  <input 
+                    v-model="referee.relationship" 
+                    type="text" 
+                    :class="[
+                      'w-full px-3 py-1.5 text-xs border rounded-md outline-none focus:border-[#4F1964]',
+                      !referee.relationship.trim() && valErrors.referees ? 'border-red-500' : 'border-[#E5E0EA]'
+                    ]" 
+                  />
                 </div>
               </div>
             </div>
@@ -590,7 +879,7 @@ const submitForm = async () => {
             v-if="activeTab !== 'guarantors_referees'"
             type="button"
             class="bg-[#4F1964] hover:bg-[#380F47] text-white px-5 py-2 rounded-md text-sm font-medium"
-            @click="activeTab = tabs[tabs.findIndex(t => t.id === activeTab) + 1].id"
+            @click="handleNextStep"
           >
             Next Step
           </button>

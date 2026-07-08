@@ -51,7 +51,7 @@ const navItems = [
       { label: 'Failing Due', path: '/loans/failing-due' },
       { label: 'Approvals', path: '/loans/approvals' }
     ],
-    roles: [UserRole.LOAN_OFFICER, UserRole.MANAGER, UserRole.ADMIN]
+    roles: [UserRole.LOAN_OFFICER, UserRole.MANAGER, UserRole.ADMIN, UserRole.COLLECTION_OFFICER]
   },
   {
     label: 'Payments',

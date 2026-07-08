@@ -125,3 +125,14 @@ export async function removeReferee(id: string, refereeId: string): Promise<void
 export async function deleteCustomer(id: string): Promise<void> {
   await api.delete(`/api/customers/${id}`)
 }
+
+export interface PayRegistrationFeePayload {
+  amount: number
+  transactionCode: string
+  mpesaRef: string
+  payMethod: number
+}
+
+export async function payRegistrationFee(id: string, payload: PayRegistrationFeePayload): Promise<void> {
+  await api.post(`/api/customers/${id}/pay-registration-fee`, payload)
+}

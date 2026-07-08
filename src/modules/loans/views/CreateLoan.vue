@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
-import { createLoan } from '@/services/modules/loan.service'
-import { getCustomers } from '@/services/modules/customer.service'
+import { createLoan, getLoans } from '@/services/modules/loan.service'
+import { getCustomers, getCustomerById } from '@/services/modules/customer.service'
 import { getLoanProducts } from '@/services/modules/loanProduct.service'
 import type { Customer } from '@/types/customer.types'
 import type { CreateLoanPayload, LoanProduct } from '@/types/loan.types'
-import { ArrowLeft, Save, Loader2, Plus, Trash2 } from 'lucide-vue-next'
+import { ArrowLeft, Save, Loader2, Plus, Trash2, AlertCircle } from 'lucide-vue-next'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -60,6 +60,46 @@ const fetchProducts = async () => {
   }
 }
 
+const selectedCustomerDetail = ref<any>(null)
+const selectedCustomerLoansCount = ref<number | null>(null)
+const checkingCustomerFee = ref(false)
+
+watch(() => form.value.customerId, async (newVal) => {
+  if (!newVal) {
+    selectedCustomerDetail.value = null
+    selectedCustomerLoansCount.value = null
+    return
+  }
+  try {
+    checkingCustomerFee.value = true
+    const detail = await getCustomerById(newVal)
+    selectedCustomerDetail.value = detail
+    
+    const loansRes = await getLoans({ customerId: newVal })
+    selectedCustomerLoansCount.value = loansRes.totalCount ?? loansRes.items.length
+  } catch (err) {
+    console.error('Error fetching customer fee status:', err)
+  } finally {
+    checkingCustomerFee.value = false
+  }
+})
+
+const isRegistrationFeeRequired = computed(() => {
+  if (!selectedCustomerDetail.value || selectedCustomerLoansCount.value === null) return false
+  if (selectedCustomerDetail.value.status === 'Active') return false
+  return selectedCustomerLoansCount.value === 0 && !selectedCustomerDetail.value.registrationFeePaid
+})
+
+const selectedProduct = computed(() => {
+  return products.value.find(p => p.id === form.value.productId) || null
+})
+
+watch([() => form.value.principal, () => form.value.productId], () => {
+  if (selectedProduct.value && form.value.principal > 0) {
+    form.value.interestAmount = Number((form.value.principal * (selectedProduct.value.interestRate / 100)).toFixed(2))
+  }
+})
+
 onMounted(() => {
   fetchCustomers()
   fetchProducts()
@@ -82,6 +122,10 @@ const removeDeduction = (index: number) => {
 }
 
 const onSubmit = async () => {
+  if (isRegistrationFeeRequired.value) {
+    alert('This customer must pay the member registration fee of 500 Ksh before applying for a loan.')
+    return
+  }
   try {
     isLoading.value = true
     
@@ -92,16 +136,17 @@ const onSubmit = async () => {
       coId: form.value.coId,
       principal: form.value.principal,
       interestAmount: form.value.interestAmount,
-      type: form.value.type,
+      type: (form.value.type === 'Automatic' ? 1 : 0) as any,
       addons: form.value.addons.length > 0 ? form.value.addons : undefined,
       deductions: form.value.deductions.length > 0 ? form.value.deductions : undefined
     }
 
     const loanId = await createLoan(payload)
     router.push(`/loans/${loanId}`)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to create loan:', error)
-    alert('Error creating loan')
+    const serverMessage = error.response?.data?.error?.message || error.response?.data?.message || error.message || 'Unknown error'
+    alert(`Error creating loan: ${serverMessage}`)
   } finally {
     isLoading.value = false
   }
@@ -236,13 +281,43 @@ const goBack = () => {
           <p v-if="form.deductions.length === 0" class="text-sm text-[#9CA3AF] italic">No deductions added.</p>
         </div>
 
+        <!-- Warnings / Previews -->
+        <div v-if="isRegistrationFeeRequired" class="p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 flex items-center gap-3">
+          <AlertCircle class="w-5 h-5 text-red-500 shrink-0" />
+          <div class="text-sm font-medium">
+            This customer must pay the member registration fee of 500 Ksh before applying for a loan.
+          </div>
+        </div>
+
+        <div v-if="selectedProduct && form.principal > 0" class="p-4 rounded-lg bg-gray-50 border border-[#E5E0EA] space-y-2">
+          <h3 class="text-sm font-bold text-[#1A1A2E] border-b pb-1.5 uppercase tracking-wide">Loan Summary Preview</h3>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+            <div>
+              <p class="text-[#9CA3AF]">Selected Product</p>
+              <p class="font-bold text-[#1A1A2E]">{{ selectedProduct.name }}</p>
+            </div>
+            <div>
+              <p class="text-[#9CA3AF]">Interest Rate</p>
+              <p class="font-bold text-[#166534]">{{ selectedProduct.interestRate }}%</p>
+            </div>
+            <div>
+              <p class="text-[#9CA3AF]">Calculated Interest</p>
+              <p class="font-bold text-[#1A1A2E]">KES {{ form.interestAmount.toLocaleString('en-US', { minimumFractionDigits: 2 }) }}</p>
+            </div>
+            <div>
+              <p class="text-[#9CA3AF]">Total Repayable</p>
+              <p class="font-extrabold text-[#4F1964] text-sm">KES {{ (form.principal + form.interestAmount).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}</p>
+            </div>
+          </div>
+        </div>
+
         <!-- Actions -->
         <div class="flex justify-end pt-4 border-t border-[#E5E0EA]">
           <div class="flex gap-3">
             <button type="button" @click="goBack" class="px-4 py-2 text-sm font-medium text-[#4B4B6B] bg-white border border-[#E5E0EA] rounded-md hover:border-[#4F1964] transition-colors">
               Cancel
             </button>
-            <button type="submit" :disabled="isLoading" class="inline-flex items-center gap-2 px-6 py-2 text-sm font-medium text-white bg-[#4F1964] rounded-md hover:bg-[#380F47] disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+            <button type="submit" :disabled="isLoading || isRegistrationFeeRequired" class="inline-flex items-center gap-2 px-6 py-2 text-sm font-medium text-white bg-[#4F1964] rounded-md hover:bg-[#380F47] disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
               <Loader2 v-if="isLoading" class="w-4 h-4 animate-spin" />
               <Save v-else class="w-4 h-4" />
               {{ isLoading ? 'Creating...' : 'Create Loan' }}
